@@ -6,5 +6,10 @@
     "@openzeppelin/contracts-upgradeable": "^5.4.0",
     "@openzeppelin/hardhat-upgrades": "^3.8.0",
     "hardhat": "^2.26.3"
+  },
+  "scripts": {
+    "generate-abi": "hardhat run ./scripts/generate-abi.ts",
+    "deploy": "hardhat run ./scripts/deploy.ts",
+    "upgrade": "hardhat run ./scripts/upgrade.ts"
   }
 }
