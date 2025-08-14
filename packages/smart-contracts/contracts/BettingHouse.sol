@@ -27,6 +27,7 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         address challengee;
         string condition;
         uint256 amount;
+        uint256 amountAfterFees;
         uint256 acceptanceDeadline;
         uint256 proofSubmissionDeadline;
         uint256 proofAcceptanceDeadline;
@@ -98,11 +99,12 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         // transfer tokens from the challenger to the betting house
         IERC20(tokenAddress).transferFrom(msg.sender, address(this), amount);
         
-        bets[totalBets] = Bet({
+        bets[betId] = Bet({
             challenger: msg.sender,
             challengee: challengee,
             condition: condition,
             amount: amount,
+            amountAfterFees: amount - (amount * fees / 10000),
             acceptanceDeadline: block.timestamp + BET_ACCEPTANCE_DEADLINE,
             proofSubmissionDeadline: deadline,
             proofAcceptanceDeadline: deadline + PROOF_ACCEPTANCE_DEADLINE,
@@ -124,14 +126,6 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         bet.token.transfer(bet.challenger, bet.amount);
     }
 
-    function acceptBet(uint256 betId) public existingBet(betId) onlyChallengee(betId) nonReentrant {
-        Bet storage bet = bets[betId];
-        BetStatus currentStatus = getCurrentStatus(betId);
-        require(currentStatus == BetStatus.OPEN, "Bet is not open");
-        bet.lastUpdatedStatus = BetStatus.ACCEPTED;
-        bet.token.transferFrom(bet.challengee, address(this), bet.amount);
-    }
-
     function rejectBet(uint256 betId) public existingBet(betId) onlyChallengee(betId) nonReentrant {
         Bet storage bet = bets[betId];
         BetStatus currentStatus = getCurrentStatus(betId);
@@ -139,6 +133,15 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         bet.lastUpdatedStatus = BetStatus.REJECTED;
         bet.isClosed = true;
         bet.token.transfer(bet.challenger, bet.amount);
+    }
+
+    function acceptBet(uint256 betId) public existingBet(betId) onlyChallengee(betId) nonReentrant {
+        Bet storage bet = bets[betId];
+        BetStatus currentStatus = getCurrentStatus(betId);
+        require(currentStatus == BetStatus.OPEN, "Bet is not open");
+        bet.lastUpdatedStatus = BetStatus.ACCEPTED;
+        bet.token.transferFrom(bet.challengee, address(this), bet.amount);
+        bet.token.transfer(feeRecipient, (bet.amount - bet.amountAfterFees) * 2);
     }
 
     function submitProof(uint256 betId, string calldata proof) public existingBet(betId) onlyChallengee(betId) {
@@ -155,7 +158,7 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         require(currentStatus == BetStatus.PROOF_SUBMITTED, "Bet is in invalid status");
         bet.lastUpdatedStatus = BetStatus.COMPLETED_BY_CHALLENGEE;
         bet.isClosed = true;
-        bet.token.transfer(bet.challengee, bet.amount * 2);
+        bet.token.transfer(bet.challengee, bet.amountAfterFees * 2);
     }
 
     function disputeProof(uint256 betId) public existingBet(betId) onlyChallenger(betId) nonReentrant {
@@ -166,8 +169,8 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         bet.isClosed = true;
 
         // currently, both parties will get their money back in case of dispute
-        bet.token.transfer(bet.challengee, bet.amount);
-        bet.token.transfer(bet.challenger, bet.amount);
+        bet.token.transfer(bet.challengee, bet.amountAfterFees);
+        bet.token.transfer(bet.challenger, bet.amountAfterFees);
     }
 
     function forfeitBet(uint256 betId) public existingBet(betId) onlyChallengee(betId) nonReentrant {
@@ -176,7 +179,7 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         require(currentStatus == BetStatus.ACCEPTED, "Bet is in invalid status");
         bet.lastUpdatedStatus = BetStatus.FORFEITED_BY_CHALLENGEE;
         bet.isClosed = true;
-        bet.token.transfer(bet.challenger, bet.amount * 2);
+        bet.token.transfer(bet.challenger, bet.amountAfterFees * 2);
     }
 
     function claimMoney(uint256 betId) public existingBet(betId) nonReentrant {
@@ -186,11 +189,11 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         bet.isClosed = true;
         
         if (currentStatus == BetStatus.PROOF_NOT_ACCEPTED_IN_TIME) {
-            bet.token.transfer(bet.challengee, bet.amount * 2);
+            bet.token.transfer(bet.challengee, bet.amountAfterFees * 2);
         } else if (currentStatus == BetStatus.PROOF_NOT_SUBMITTED_IN_TIME) {
-            bet.token.transfer(bet.challenger, bet.amount * 2);
+            bet.token.transfer(bet.challenger, bet.amountAfterFees * 2);
         } else if (currentStatus == BetStatus.BET_NOT_ACCEPTED_IN_TIME) {
-            bet.token.transfer(bet.challenger, bet.amount);
+            bet.token.transfer(bet.challenger, bet.amountAfterFees);
         } else {
             revert("Bet is not in a claimable status");
         }
