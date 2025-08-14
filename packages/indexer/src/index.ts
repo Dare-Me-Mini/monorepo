@@ -3,21 +3,23 @@ import { bet, betEvent } from "ponder:schema";
 import { BettingHouseAbi } from "../abis/BettingHouseAbi";
 
 type OnchainBet = readonly [
-  `0x${string}`,
-  `0x${string}`,
-  string,
-  bigint,
-  bigint,
-  bigint,
-  bigint,
-  bigint,
-  string,
-  number,
-  `0x${string}`,
-  boolean
+  `0x${string}`, // challenger
+  `0x${string}`, // challengee
+  `0x${string}`, // mediator
+  string, // condition
+  bigint, // amount
+  bigint, // amountAfterFees
+  bigint, // acceptanceDeadline
+  bigint, // proofSubmissionDeadline
+  bigint, // proofAcceptanceDeadline
+  bigint, // mediationDeadline
+  string, // proof
+  number, // lastUpdatedStatus (uint8)
+  `0x${string}`, // token
+  boolean // isClosed
 ];
 
-const STATUS: readonly [
+const STATUS = [
   "OPEN",
   "CANCELLED",
   "ACCEPTED",
@@ -25,22 +27,13 @@ const STATUS: readonly [
   "PROOF_SUBMITTED",
   "PROOF_DISPUTED",
   "COMPLETED_BY_CHALLENGEE",
-  "FORFEITED_BY_CHALLENGEE",
-  "BET_NOT_ACCEPTED_IN_TIME",
-  "PROOF_NOT_SUBMITTED_IN_TIME",
-  "PROOF_NOT_ACCEPTED_IN_TIME"
-] = [
-  "OPEN",
-  "CANCELLED",
-  "ACCEPTED",
-  "REJECTED",
-  "PROOF_SUBMITTED",
-  "PROOF_DISPUTED",
-  "COMPLETED_BY_CHALLENGEE",
+  "COMPLETED_BY_CHALLENGER",
   "FORFEITED_BY_CHALLENGEE",
   "BET_NOT_ACCEPTED_IN_TIME",
   "PROOF_NOT_SUBMITTED_IN_TIME",
   "PROOF_NOT_ACCEPTED_IN_TIME",
+  "BET_NOT_MEDIATED_IN_TIME",
+  "DRAW",
 ] as const;
 
 function toDate(seconds: bigint | number): Date {
@@ -64,12 +57,14 @@ ponder.on("BettingHouse:BetCreated", async ({ event, context }) => {
   const [
     challenger,
     challengee,
+    mediator,
     condition,
     amount,
     amountAfterFees,
     acceptanceDeadline,
     proofSubmissionDeadline,
     proofAcceptanceDeadline,
+    mediationDeadline,
     proof,
     lastUpdatedStatus,
     token,
@@ -82,12 +77,14 @@ ponder.on("BettingHouse:BetCreated", async ({ event, context }) => {
     id: betId,
     challenger,
     challengee,
+    mediator,
     condition,
     amount,
     amountAfterFees,
     acceptanceDeadline: toDate(acceptanceDeadline),
     proofSubmissionDeadline: toDate(proofSubmissionDeadline),
     proofAcceptanceDeadline: toDate(proofAcceptanceDeadline),
+    mediationDeadline: toDate(mediationDeadline),
     proof,
     lastUpdatedStatus: status,
     token,
@@ -112,6 +109,7 @@ ponder.on("BettingHouse:BetCreated", async ({ event, context }) => {
       amount,
       condition,
       token,
+      mediator,
     },
   });
 });
@@ -211,11 +209,13 @@ ponder.on("BettingHouse:ProofAccepted", async ({ event, context }) => {
 });
 
 ponder.on("BettingHouse:ProofDisputed", async ({ event, context }) => {
-  const { betId } = event.args;
+  const { betId, isMediating, mediationDeadline } = event.args;
+
   await context.db.update(bet, { id: betId }).set({
     lastUpdatedStatus: "PROOF_DISPUTED",
-    isClosed: true,
+    isClosed: isMediating ? false : true,
     updatedAt: toDate(event.block.timestamp),
+    ...(isMediating ? { mediationDeadline: toDate(mediationDeadline) } : {}),
   });
   await context.db.insert(betEvent).values({
     txHash: event.transaction.hash,
@@ -225,7 +225,7 @@ ponder.on("BettingHouse:ProofDisputed", async ({ event, context }) => {
     betId,
     name: "ProofDisputed",
     actor: event.transaction.from,
-    details: {},
+    details: { isMediating, mediationDeadline },
   });
 });
 

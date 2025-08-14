@@ -190,6 +190,12 @@ export const BettingHouseAbi = [
         "internalType": "address",
         "name": "token",
         "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "mediator",
+        "type": "address"
       }
     ],
     "name": "BetCreated",
@@ -300,6 +306,18 @@ export const BettingHouseAbi = [
         "internalType": "uint256",
         "name": "betId",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isMediating",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "mediationDeadline",
+        "type": "uint256"
       }
     ],
     "name": "ProofDisputed",
@@ -366,6 +384,19 @@ export const BettingHouseAbi = [
   {
     "inputs": [],
     "name": "BET_ACCEPTANCE_DEADLINE",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "BET_MEDIATION_DEADLINE",
     "outputs": [
       {
         "internalType": "uint256",
@@ -462,6 +493,11 @@ export const BettingHouseAbi = [
         "type": "address"
       },
       {
+        "internalType": "address",
+        "name": "mediator",
+        "type": "address"
+      },
+      {
         "internalType": "string",
         "name": "condition",
         "type": "string"
@@ -489,6 +525,11 @@ export const BettingHouseAbi = [
       {
         "internalType": "uint256",
         "name": "proofAcceptanceDeadline",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "mediationDeadline",
         "type": "uint256"
       },
       {
@@ -566,6 +607,11 @@ export const BettingHouseAbi = [
       {
         "internalType": "address",
         "name": "tokenAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "mediator",
         "type": "address"
       }
     ],
@@ -733,6 +779,29 @@ export const BettingHouseAbi = [
       }
     ],
     "name": "setFees",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "betId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "isDraw",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "isChallengeeWinner",
+        "type": "bool"
+      }
+    ],
+    "name": "submitMediation",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

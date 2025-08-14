@@ -5,12 +5,14 @@ export const bet = onchainTable("bet", (t) => ({
   id: t.bigint().primaryKey(),
   challenger: t.hex().notNull(),
   challengee: t.hex().notNull(),
+  mediator: t.hex().notNull().default("0x0000000000000000000000000000000000000000"),
   condition: t.text().notNull(),
   amount: t.bigint().notNull(),
   amountAfterFees: t.bigint().notNull(),
   acceptanceDeadline: t.timestamp().notNull(),
   proofSubmissionDeadline: t.timestamp().notNull(),
   proofAcceptanceDeadline: t.timestamp().notNull(),
+  mediationDeadline: t.timestamp().notNull().default(new Date(0)),
   proof: t.text().notNull().default(""),
   lastUpdatedStatus: t
     .text({
@@ -22,10 +24,13 @@ export const bet = onchainTable("bet", (t) => ({
         "PROOF_SUBMITTED",
         "PROOF_DISPUTED",
         "COMPLETED_BY_CHALLENGEE",
+        "COMPLETED_BY_CHALLENGER",
         "FORFEITED_BY_CHALLENGEE",
         "BET_NOT_ACCEPTED_IN_TIME",
         "PROOF_NOT_SUBMITTED_IN_TIME",
         "PROOF_NOT_ACCEPTED_IN_TIME",
+        "BET_NOT_MEDIATED_IN_TIME",
+        "DRAW",
       ],
     })
     .notNull(),
