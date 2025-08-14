@@ -43,11 +43,15 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
 
     uint256 public constant BET_ACCEPTANCE_DEADLINE = 1 days;
     uint256 public constant PROOF_ACCEPTANCE_DEADLINE = 1 days;
-    uint256 public fees = 100; // 1%, in basis points
+    uint256 public fees;
     address public feeRecipient;
 
     modifier existingBet(uint256 betId) {
         require(betId < totalBets, "Bet does not exist");
+        _;
+    }
+
+    modifier betNotClosed(uint256 betId) {
         require(!bets[betId].isClosed, "Bet is closed");
         _;
     }
@@ -71,11 +75,13 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
+        fees = 100; // 1%, in basis points
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     function setFees(uint256 _fees) public onlyOwner {
+        require(_fees <= 10000, "Fees must be less than or equal to 100%");
         fees = _fees;
     }
 
@@ -92,6 +98,10 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
     }
 
     function createBet(address challengee, string calldata condition, uint256 amount, uint256 deadline, address tokenAddress) public nonReentrant {
+        require(amount > 0, "Amount must be greater than 0");
+        require(deadline > block.timestamp, "Deadline must be in the future");
+        require(challengee != address(0), "Challengee cannot be the zero address");
+        require(msg.sender != challengee, "Challenger and challengee cannot be the same");
         require(supportedTokens[tokenAddress], "Token is not supported");
         
         uint256 betId = totalBets;
@@ -117,7 +127,7 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         totalBets++;
     }
 
-    function cancelBet(uint256 betId) public existingBet(betId) onlyChallenger(betId) nonReentrant {
+    function cancelBet(uint256 betId) public existingBet(betId) onlyChallenger(betId) betNotClosed(betId) nonReentrant {
         Bet storage bet = bets[betId];
         BetStatus currentStatus = getCurrentStatus(betId);
         require(currentStatus == BetStatus.OPEN, "Bet is not open");
@@ -126,7 +136,7 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         bet.token.transfer(bet.challenger, bet.amount);
     }
 
-    function rejectBet(uint256 betId) public existingBet(betId) onlyChallengee(betId) nonReentrant {
+    function rejectBet(uint256 betId) public existingBet(betId) onlyChallengee(betId) betNotClosed(betId) nonReentrant {
         Bet storage bet = bets[betId];
         BetStatus currentStatus = getCurrentStatus(betId);
         require(currentStatus == BetStatus.OPEN, "Bet is not open");
@@ -135,7 +145,7 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         bet.token.transfer(bet.challenger, bet.amount);
     }
 
-    function acceptBet(uint256 betId) public existingBet(betId) onlyChallengee(betId) nonReentrant {
+    function acceptBet(uint256 betId) public existingBet(betId) onlyChallengee(betId) betNotClosed(betId) nonReentrant {
         Bet storage bet = bets[betId];
         BetStatus currentStatus = getCurrentStatus(betId);
         require(currentStatus == BetStatus.OPEN, "Bet is not open");
@@ -152,7 +162,7 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         bet.lastUpdatedStatus = BetStatus.PROOF_SUBMITTED;
     }
 
-    function acceptProof(uint256 betId) public existingBet(betId) onlyChallenger(betId) nonReentrant {
+    function acceptProof(uint256 betId) public existingBet(betId) onlyChallenger(betId) betNotClosed(betId) nonReentrant {
         Bet storage bet = bets[betId];
         BetStatus currentStatus = getCurrentStatus(betId);
         require(currentStatus == BetStatus.PROOF_SUBMITTED, "Bet is in invalid status");
@@ -161,7 +171,7 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         bet.token.transfer(bet.challengee, bet.amountAfterFees * 2);
     }
 
-    function disputeProof(uint256 betId) public existingBet(betId) onlyChallenger(betId) nonReentrant {
+    function disputeProof(uint256 betId) public existingBet(betId) onlyChallenger(betId) betNotClosed(betId) nonReentrant {
         Bet storage bet = bets[betId];
         BetStatus currentStatus = getCurrentStatus(betId);
         require(currentStatus == BetStatus.PROOF_SUBMITTED, "Bet is in invalid status");
@@ -173,7 +183,7 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         bet.token.transfer(bet.challenger, bet.amountAfterFees);
     }
 
-    function forfeitBet(uint256 betId) public existingBet(betId) onlyChallengee(betId) nonReentrant {
+    function forfeitBet(uint256 betId) public existingBet(betId) onlyChallengee(betId) betNotClosed(betId) nonReentrant {
         Bet storage bet = bets[betId];
         BetStatus currentStatus = getCurrentStatus(betId);
         require(currentStatus == BetStatus.ACCEPTED, "Bet is in invalid status");
@@ -182,7 +192,7 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         bet.token.transfer(bet.challenger, bet.amountAfterFees * 2);
     }
 
-    function claimMoney(uint256 betId) public existingBet(betId) nonReentrant {
+    function claimMoney(uint256 betId) public existingBet(betId) betNotClosed(betId) nonReentrant {
         Bet storage bet = bets[betId];
         BetStatus currentStatus = getCurrentStatus(betId);
         
