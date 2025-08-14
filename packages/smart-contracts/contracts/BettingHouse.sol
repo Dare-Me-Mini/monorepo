@@ -22,6 +22,30 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         PROOF_NOT_ACCEPTED_IN_TIME
     }
     
+    // Events
+    event BetCreated(
+        uint256 indexed betId,
+        address indexed challenger,
+        address indexed challengee,
+        string condition,
+        uint256 amount,
+        address token
+    );
+
+    event BetCancelled(uint256 indexed betId);
+    event BetRejected(uint256 indexed betId);
+    event BetAccepted(uint256 indexed betId, uint256 feePerSide, uint256 totalFees);
+    event ProofSubmitted(uint256 indexed betId, string proof);
+    event ProofAccepted(uint256 indexed betId);
+    event ProofDisputed(uint256 indexed betId);
+    event BetForfeited(uint256 indexed betId);
+    event BetClaimed(uint256 indexed betId, address indexed claimer, BetStatus resultingStatus);
+
+    event FeesUpdated(uint256 feesBps);
+    event FeeRecipientUpdated(address feeRecipient);
+    event SupportedTokenAdded(address token);
+    event SupportedTokenRemoved(address token);
+    
     struct Bet {
         address challenger;
         address challengee;
@@ -83,18 +107,22 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
     function setFees(uint256 _fees) public onlyOwner {
         require(_fees <= 10000, "Fees must be less than or equal to 100%");
         fees = _fees;
+        emit FeesUpdated(_fees);
     }
 
     function setFeeRecipient(address _feeRecipient) public onlyOwner {
         feeRecipient = _feeRecipient;
+        emit FeeRecipientUpdated(_feeRecipient);
     }
 
     function addSupportedToken(address token) public onlyOwner {
         supportedTokens[token] = true;
+        emit SupportedTokenAdded(token);
     }
 
     function removeSupportedToken(address token) public onlyOwner {
         supportedTokens[token] = false;
+        emit SupportedTokenRemoved(token);
     }
 
     function createBet(address challengee, string calldata condition, uint256 amount, uint256 deadline, address tokenAddress) public nonReentrant {
@@ -125,6 +153,8 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         });
 
         totalBets++;
+
+        emit BetCreated(betId, msg.sender, challengee, condition, amount, tokenAddress);
     }
 
     function cancelBet(uint256 betId) public existingBet(betId) onlyChallenger(betId) betNotClosed(betId) nonReentrant {
@@ -134,6 +164,7 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         bet.lastUpdatedStatus = BetStatus.CANCELLED;
         bet.isClosed = true;
         bet.token.transfer(bet.challenger, bet.amount);
+        emit BetCancelled(betId);
     }
 
     function rejectBet(uint256 betId) public existingBet(betId) onlyChallengee(betId) betNotClosed(betId) nonReentrant {
@@ -143,6 +174,7 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         bet.lastUpdatedStatus = BetStatus.REJECTED;
         bet.isClosed = true;
         bet.token.transfer(bet.challenger, bet.amount);
+        emit BetRejected(betId);
     }
 
     function acceptBet(uint256 betId) public existingBet(betId) onlyChallengee(betId) betNotClosed(betId) nonReentrant {
@@ -152,6 +184,7 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         bet.lastUpdatedStatus = BetStatus.ACCEPTED;
         bet.token.transferFrom(bet.challengee, address(this), bet.amount);
         bet.token.transfer(feeRecipient, (bet.amount - bet.amountAfterFees) * 2);
+        emit BetAccepted(betId, (bet.amount - bet.amountAfterFees), (bet.amount - bet.amountAfterFees) * 2);
     }
 
     function submitProof(uint256 betId, string calldata proof) public existingBet(betId) onlyChallengee(betId) {
@@ -160,6 +193,7 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         require(currentStatus == BetStatus.ACCEPTED, "Bet is in invalid status");
         bet.proof = proof;
         bet.lastUpdatedStatus = BetStatus.PROOF_SUBMITTED;
+        emit ProofSubmitted(betId, proof);
     }
 
     function acceptProof(uint256 betId) public existingBet(betId) onlyChallenger(betId) betNotClosed(betId) nonReentrant {
@@ -169,6 +203,7 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         bet.lastUpdatedStatus = BetStatus.COMPLETED_BY_CHALLENGEE;
         bet.isClosed = true;
         bet.token.transfer(bet.challengee, bet.amountAfterFees * 2);
+        emit ProofAccepted(betId);
     }
 
     function disputeProof(uint256 betId) public existingBet(betId) onlyChallenger(betId) betNotClosed(betId) nonReentrant {
@@ -181,6 +216,7 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         // currently, both parties will get their money back in case of dispute
         bet.token.transfer(bet.challengee, bet.amountAfterFees);
         bet.token.transfer(bet.challenger, bet.amountAfterFees);
+        emit ProofDisputed(betId);
     }
 
     function forfeitBet(uint256 betId) public existingBet(betId) onlyChallengee(betId) betNotClosed(betId) nonReentrant {
@@ -190,6 +226,7 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         bet.lastUpdatedStatus = BetStatus.FORFEITED_BY_CHALLENGEE;
         bet.isClosed = true;
         bet.token.transfer(bet.challenger, bet.amountAfterFees * 2);
+        emit BetForfeited(betId);
     }
 
     function claimMoney(uint256 betId) public existingBet(betId) betNotClosed(betId) nonReentrant {
@@ -200,10 +237,13 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         
         if (currentStatus == BetStatus.PROOF_NOT_ACCEPTED_IN_TIME) {
             bet.token.transfer(bet.challengee, bet.amountAfterFees * 2);
+            emit BetClaimed(betId, msg.sender, BetStatus.PROOF_NOT_ACCEPTED_IN_TIME);
         } else if (currentStatus == BetStatus.PROOF_NOT_SUBMITTED_IN_TIME) {
             bet.token.transfer(bet.challenger, bet.amountAfterFees * 2);
+            emit BetClaimed(betId, msg.sender, BetStatus.PROOF_NOT_SUBMITTED_IN_TIME);
         } else if (currentStatus == BetStatus.BET_NOT_ACCEPTED_IN_TIME) {
             bet.token.transfer(bet.challenger, bet.amountAfterFees);
+            emit BetClaimed(betId, msg.sender, BetStatus.BET_NOT_ACCEPTED_IN_TIME);
         } else {
             revert("Bet is not in a claimable status");
         }
