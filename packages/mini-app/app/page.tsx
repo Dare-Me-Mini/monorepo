@@ -1,103 +1,189 @@
-import Image from "next/image";
+"use client"
 
-export default function Home() {
+import { useEffect, useMemo, useState } from "react"
+import { sdk } from "@farcaster/miniapp-sdk"
+import { v4 as uuidv4 } from "uuid"
+import { useRouter } from "next/navigation"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import ThemeToggle from "@/components/ThemeToggle"
+
+type DareStatus = "pending" | "accepted" | "rejected" | "completed"
+
+export type Dare = {
+  id: string
+  description: string
+  stakeUsd: number
+  challenger: string
+  challengee: string
+  status: DareStatus
+  createdAt: number
+}
+
+function loadDares(): Dare[] {
+  if (typeof window === "undefined") return []
+  const raw = window.localStorage.getItem("dares")
+  return raw ? (JSON.parse(raw) as Dare[]) : []
+}
+
+function saveDares(dares: Dare[]) {
+  if (typeof window === "undefined") return
+  window.localStorage.setItem("dares", JSON.stringify(dares))
+}
+
+export default function Page() {
+  const router = useRouter()
+  const [dares, setDares] = useState<Dare[]>([])
+  const [description, setDescription] = useState("")
+  const [stakeUsd, setStakeUsd] = useState<string>("")
+  const [challengee, setChallengee] = useState("")
+  const [challenger] = useState("You")
+  const [error, setError] = useState<string | null>(null)
+  const [added, setAdded] = useState<boolean>(false)
+  const [isCreating, setIsCreating] = useState(false)
+
+  useEffect(() => {
+    setDares(loadDares())
+    ;(async () => {
+      await sdk.actions.ready()
+    })()
+  }, [])
+
+  useEffect(() => {
+    saveDares(dares)
+  }, [dares])
+
+  const totalCreated = useMemo(() => dares.length, [dares])
+
+  const handleAddMiniApp = async () => {
+    try {
+      await sdk.actions.addMiniApp()
+      setAdded(true)
+      setError(null)
+    } catch (e) {
+      setError('Failed to add Mini App (works only on production domains matching manifest)')
+    }
+  }
+
+  const createDare = async () => {
+    const desc = description.trim()
+    const to = challengee.trim()
+    const from = challenger.trim()
+    const stake = Number(stakeUsd)
+    if (!desc || !to || !from || !Number.isFinite(stake) || stake <= 0) return
+    setIsCreating(true)
+    try {
+      const id = uuidv4()
+      const dare: Dare = {
+        id,
+        description: desc,
+        stakeUsd: stake,
+        challenger: from,
+        challengee: to,
+        status: 'pending',
+        createdAt: Date.now(),
+      }
+      setDares((prev) => [dare, ...prev])
+      setDescription("")
+      setStakeUsd("")
+      setChallengee("")
+
+      const params = new URLSearchParams({
+        desc,
+        stake: String(stake),
+        from,
+        to,
+        status: 'pending',
+      })
+      // Go to share/preview screen first
+      router.push(`/dare/${id}/share?${params.toString()}`)
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <main className="min-h-dvh p-4 md:p-6 bg-background text-foreground">
+      <div className="mx-auto w-full max-w-xl space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">Dares</h1>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <Button variant="outline" onClick={handleAddMiniApp}>
+              {added ? 'Added' : 'Add to My Apps'}
+            </Button>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+        {error && <div className="text-sm text-red-300">{error}</div>}
+
+        <Card className="bg-card border-border text-card-foreground">
+          <CardHeader>
+            <CardTitle className="text-base">Create a dare</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="friend">Friend's username</Label>
+              <Input id="friend" value={challengee} onChange={(e) => setChallengee(e.target.value)} placeholder="@friend" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="challenge">Challenge</Label>
+              <Input id="challenge" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Propose to her at the cafe" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="amount">Bet amount (USD)</Label>
+              <Input id="amount" inputMode="decimal" value={stakeUsd} onChange={(e) => setStakeUsd(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="20" />
+            </div>
+            <div className="flex justify-end">
+              <Button
+                onClick={createDare}
+                disabled={isCreating || !description.trim() || !challengee.trim() || !Number.isFinite(Number(stakeUsd)) || Number(stakeUsd) <= 0}
+              >
+                {isCreating ? 'Creating…' : 'Create Dare'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {totalCreated > 0 && (
+          <div className="space-y-3">
+            <h3 className="text-sm text-white/70">Your dares</h3>
+            {dares.map((dare) => (
+              <Card key={dare.id} className="bg-card border-border text-card-foreground">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-medium">{dare.description}</div>
+                      <div className="text-xs text-foreground/60 mt-1">You → {dare.challengee} • ${dare.stakeUsd.toLocaleString()}</div>
+                      <div className="text-[10px] mt-1 px-2 py-0.5 inline-block border border-border rounded-full text-foreground/70">{dare.status}</div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const params = new URLSearchParams({
+                          desc: dare.description,
+                          stake: String(dare.stakeUsd),
+                          from: dare.challenger,
+                          to: dare.challengee,
+                          status: dare.status,
+                        })
+                        router.push(`/dare/${dare.id}?${params.toString()}`)
+                      }}
+                    >
+                      Open
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {totalCreated === 0 && (
+          <div className="text-center text-white/60 text-sm">No dares yet. Create your first one.</div>
+        )}
+      </div>
+    </main>
+  )
 }
