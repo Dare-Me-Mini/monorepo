@@ -16,10 +16,13 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         PROOF_SUBMITTED,
         PROOF_DISPUTED,
         COMPLETED_BY_CHALLENGEE,
+        COMPLETED_BY_CHALLENGER,
         FORFEITED_BY_CHALLENGEE,
         BET_NOT_ACCEPTED_IN_TIME,
         PROOF_NOT_SUBMITTED_IN_TIME,
-        PROOF_NOT_ACCEPTED_IN_TIME
+        PROOF_NOT_ACCEPTED_IN_TIME,
+        BET_NOT_MEDIATED_IN_TIME,
+        DRAW
     }
     
     // Events
@@ -29,7 +32,8 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         address indexed challengee,
         string condition,
         uint256 amount,
-        address token
+        address token,
+        address mediator
     );
 
     event BetCancelled(uint256 indexed betId);
@@ -37,7 +41,7 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
     event BetAccepted(uint256 indexed betId, uint256 feePerSide, uint256 totalFees);
     event ProofSubmitted(uint256 indexed betId, string proof);
     event ProofAccepted(uint256 indexed betId);
-    event ProofDisputed(uint256 indexed betId);
+    event ProofDisputed(uint256 indexed betId, bool isMediating, uint256 mediationDeadline);
     event BetForfeited(uint256 indexed betId);
     event BetClaimed(uint256 indexed betId, address indexed claimer, BetStatus resultingStatus);
 
@@ -49,12 +53,14 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
     struct Bet {
         address challenger;
         address challengee;
+        address mediator;
         string condition;
         uint256 amount;
         uint256 amountAfterFees;
         uint256 acceptanceDeadline;
         uint256 proofSubmissionDeadline;
         uint256 proofAcceptanceDeadline;
+        uint256 mediationDeadline;
         string proof;
         BetStatus lastUpdatedStatus;
         IERC20 token;
@@ -67,6 +73,7 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
 
     uint256 public constant BET_ACCEPTANCE_DEADLINE = 1 days;
     uint256 public constant PROOF_ACCEPTANCE_DEADLINE = 1 days;
+    uint256 public constant BET_MEDIATION_DEADLINE = 1 days;
     uint256 public fees;
     address public feeRecipient;
 
@@ -87,6 +94,11 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
 
     modifier onlyChallengee(uint256 betId) {
         require(bets[betId].challengee == msg.sender, "Only challengee can perform this action");
+        _;
+    }
+
+    modifier onlyMediator(uint256 betId) {
+        require(bets[betId].mediator == msg.sender, "Only mediator can perform this action");
         _;
     }
 
@@ -125,7 +137,7 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         emit SupportedTokenRemoved(token);
     }
 
-    function createBet(address challengee, string calldata condition, uint256 amount, uint256 deadline, address tokenAddress) public nonReentrant {
+    function createBet(address challengee, string calldata condition, uint256 amount, uint256 deadline, address tokenAddress, address mediator) public nonReentrant {
         require(amount > 0, "Amount must be greater than 0");
         require(deadline > block.timestamp, "Deadline must be in the future");
         require(challengee != address(0), "Challengee cannot be the zero address");
@@ -140,6 +152,7 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         bets[betId] = Bet({
             challenger: msg.sender,
             challengee: challengee,
+            mediator: mediator,
             condition: condition,
             amount: amount,
             amountAfterFees: amount - (amount * fees / 10000),
@@ -149,12 +162,13 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
             proof: "",
             lastUpdatedStatus: BetStatus.OPEN,
             token: IERC20(tokenAddress),
-            isClosed: false
+            isClosed: false,
+            mediationDeadline: 0
         });
 
         totalBets++;
 
-        emit BetCreated(betId, msg.sender, challengee, condition, amount, tokenAddress);
+        emit BetCreated(betId, msg.sender, challengee, condition, amount, tokenAddress, mediator);
     }
 
     function cancelBet(uint256 betId) public existingBet(betId) onlyChallenger(betId) betNotClosed(betId) nonReentrant {
@@ -211,12 +225,36 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         BetStatus currentStatus = getCurrentStatus(betId);
         require(currentStatus == BetStatus.PROOF_SUBMITTED, "Bet is in invalid status");
         bet.lastUpdatedStatus = BetStatus.PROOF_DISPUTED;
-        bet.isClosed = true;
+        
+        if (bet.mediator == address(0)) {
+            bet.isClosed = true;
 
-        // currently, both parties will get their money back in case of dispute
-        bet.token.transfer(bet.challengee, bet.amountAfterFees);
-        bet.token.transfer(bet.challenger, bet.amountAfterFees);
-        emit ProofDisputed(betId);
+            // currently, both parties will get their money back in case of dispute
+            bet.token.transfer(bet.challengee, bet.amountAfterFees);
+            bet.token.transfer(bet.challenger, bet.amountAfterFees);
+            emit ProofDisputed(betId, false, 0);
+        } else {
+            bet.mediationDeadline = block.timestamp + BET_MEDIATION_DEADLINE;
+            emit ProofDisputed(betId, true, bet.mediationDeadline);
+        }
+    }
+
+    function submitMediation(uint256 betId, bool isDraw, bool isChallengeeWinner) public existingBet(betId) onlyMediator(betId) betNotClosed(betId) nonReentrant {
+        Bet storage bet = bets[betId];
+        BetStatus currentStatus = getCurrentStatus(betId);
+        require(currentStatus == BetStatus.PROOF_DISPUTED, "Bet is in invalid status");
+        if (isDraw) {
+            bet.lastUpdatedStatus = BetStatus.DRAW;
+            bet.token.transfer(bet.challenger, bet.amountAfterFees);
+            bet.token.transfer(bet.challengee, bet.amountAfterFees);
+        } else if (isChallengeeWinner) {
+            bet.lastUpdatedStatus = BetStatus.COMPLETED_BY_CHALLENGEE;
+            bet.token.transfer(bet.challengee, bet.amountAfterFees * 2);
+        } else {
+            bet.lastUpdatedStatus = BetStatus.COMPLETED_BY_CHALLENGER;
+            bet.token.transfer(bet.challenger, bet.amountAfterFees * 2);
+        }
+        bet.isClosed = true;
     }
 
     function forfeitBet(uint256 betId) public existingBet(betId) onlyChallengee(betId) betNotClosed(betId) nonReentrant {
@@ -244,6 +282,10 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         } else if (currentStatus == BetStatus.BET_NOT_ACCEPTED_IN_TIME) {
             bet.token.transfer(bet.challenger, bet.amountAfterFees);
             emit BetClaimed(betId, msg.sender, BetStatus.BET_NOT_ACCEPTED_IN_TIME);
+        } else if (currentStatus == BetStatus.BET_NOT_MEDIATED_IN_TIME) {
+            bet.token.transfer(bet.challenger, bet.amountAfterFees);
+            bet.token.transfer(bet.challengee, bet.amountAfterFees);
+            emit BetClaimed(betId, msg.sender, BetStatus.BET_NOT_MEDIATED_IN_TIME);
         } else {
             revert("Bet is not in a claimable status");
         }
@@ -262,6 +304,10 @@ contract BettingHouse is Initializable, UUPSUpgradeable, OwnableUpgradeable, Ree
         } else if (lastUpdatedStatus == BetStatus.PROOF_SUBMITTED) {
             if (block.timestamp > bets[betId].proofAcceptanceDeadline) {
                 return BetStatus.PROOF_NOT_ACCEPTED_IN_TIME;
+            }
+        } else if (lastUpdatedStatus == BetStatus.PROOF_DISPUTED && !bets[betId].isClosed) {
+            if (block.timestamp > bets[betId].mediationDeadline) {
+                return BetStatus.BET_NOT_MEDIATED_IN_TIME;
             }
         }
 
