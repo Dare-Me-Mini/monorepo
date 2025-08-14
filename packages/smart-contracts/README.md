@@ -11,3 +11,13 @@ REPORT_GAS=true npx hardhat test
 npx hardhat node
 npx hardhat ignition deploy ./ignition/modules/Lock.ts
 ```
+
+## ABI generation for indexer
+
+Generate ABIs into the indexer package:
+
+```bash
+bun hardhat run ./scripts/generate-abi
+```
+
+This compiles contracts and writes `BettingHouseAbi.ts` to `packages/indexer/abis/`.
