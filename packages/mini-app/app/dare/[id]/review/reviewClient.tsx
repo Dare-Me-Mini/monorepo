@@ -4,15 +4,31 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { useBettingHouse } from '@/hooks/useBettingHouse'
+import { useAccount } from 'wagmi'
+import { toast } from 'sonner'
 
 type Proof = { url: string; note: string; createdAt: number }
 
 export default function ReviewClient({ id }: { id: string }) {
   const qp = useSearchParams()
   const router = useRouter()
+  const { isConnected } = useAccount()
+  const { acceptProof, disputeProof, isSubmitting } = useBettingHouse()
   const [proof, setProof] = useState<Proof | null>(null)
+  const [betId, setBetId] = useState<number | null>(null)
 
   const storageKey = useMemo(() => `dare-proof:${id}`, [id])
+
+  useEffect(() => {
+    const urlBetId = qp.get('betId')
+    if (urlBetId) {
+      setBetId(Number(urlBetId));
+    } else {
+      // Fallback to a placeholder - in a real app, this should be extracted from transaction
+      setBetId(1);
+    }
+  }, [qp])
 
   useEffect(() => {
     try {
@@ -21,22 +37,52 @@ export default function ReviewClient({ id }: { id: string }) {
     } catch {}
   }, [storageKey])
 
-  const acknowledge = () => {
-    // Mark challenge as completed locally
-    try {
-      const raw = window.localStorage.getItem('dares')
-      if (raw) {
-        const dares = JSON.parse(raw) as Array<any>
-        const idx = dares.findIndex((d) => d.id === id)
-        if (idx >= 0) {
-          dares[idx].status = 'completed'
-          window.localStorage.setItem('dares', JSON.stringify(dares))
+  const acknowledge = async () => {
+    if (!isConnected) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
+    
+    if (!betId) {
+      toast.error("Bet ID not found");
+      return;
+    }
+
+    const result = await acceptProof(betId);
+    if (result.success) {
+      // Mark challenge as completed locally
+      try {
+        const raw = window.localStorage.getItem('dares')
+        if (raw) {
+          const dares = JSON.parse(raw) as Array<any>
+          const idx = dares.findIndex((d) => d.id === id)
+          if (idx >= 0) {
+            dares[idx].status = 'completed'
+            window.localStorage.setItem('dares', JSON.stringify(dares))
+          }
         }
-      }
-    } catch {}
-    // Go back to dare detail page
-    const params = new URLSearchParams(qp.toString())
-    router.push(`/dare/${id}?${params.toString()}`)
+      } catch {}
+      // Go back to dare detail page
+      const params = new URLSearchParams(qp.toString())
+      router.push(`/dare/${id}?${params.toString()}`)
+    }
+  }
+
+  const dispute = async () => {
+    if (!isConnected) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
+    
+    if (!betId) {
+      toast.error("Bet ID not found");
+      return;
+    }
+
+    const result = await disputeProof(betId);
+    if (result.success) {
+      toast.success("Proof disputed successfully!");
+    }
   }
 
   const goToProof = () => {
@@ -68,8 +114,13 @@ export default function ReviewClient({ id }: { id: string }) {
                 <div className="text-sm"><span className="opacity-70">URL:</span> <a className="underline" href={proof.url} target="_blank" rel="noreferrer">{proof.url}</a></div>
                 <div className="text-sm"><span className="opacity-70">Note:</span> {proof.note || '—'}</div>
                 <div className="text-xs text-foreground/60">Submitted {new Date(proof.createdAt).toLocaleString()}</div>
-                <div className="flex justify-end">
-                  <Button onClick={acknowledge}>Acknowledge & close</Button>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={dispute} disabled={isSubmitting || !isConnected || !betId}>
+                    {isSubmitting ? 'Processing...' : 'Dispute'}
+                  </Button>
+                  <Button onClick={acknowledge} disabled={isSubmitting || !isConnected || !betId}>
+                    {isSubmitting ? 'Processing...' : 'Accept & Close'}
+                  </Button>
                 </div>
               </div>
             )}

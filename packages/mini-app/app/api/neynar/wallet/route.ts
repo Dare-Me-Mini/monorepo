@@ -29,29 +29,32 @@ export async function GET(req: NextRequest) {
     const client = new NeynarAPIClient(config)
 
     const response = await client.lookupUserByUsername({ username })
-    const user = (response as any)?.user
+    const user = response.user;
 
-    const ethAddresses: string[] =
-      user?.verified_addresses?.eth_addresses || []
-    const custodyAddress: string | null = user?.custody_address || user?.custodyAddress || null
+    const walletAddress = user.verified_addresses?.primary?.eth_address;
+    const custodyAddress = user.custody_address;
 
-    if (!user) {
+    return NextResponse.json({
+      walletAddress,
+      custodyAddress,
+      user: {
+        fid: user.fid,
+        username: user.username,
+        displayName: user.display_name,
+        pfp: user.pfp_url,
+      }
+    })
+  } catch (error: any) {
+    console.error('Neynar API error:', error);
+    
+    // Check if it's a user not found error
+    if (error?.message?.includes('not found') || error?.status === 404) {
       return NextResponse.json(
         { error: "User not found" },
         { status: 404 }
       )
     }
-
-    const payload = {
-      username,
-      fid: user.fid,
-      walletAddress: ethAddresses[0] || null,
-      allVerifiedEthAddresses: ethAddresses,
-      custodyAddress,
-      hasVerifiedWallet: ethAddresses.length > 0,
-    }
-    return NextResponse.json(payload)
-  } catch (error: any) {
+    
     return NextResponse.json(
       {
         error: "Failed to fetch user wallet address",

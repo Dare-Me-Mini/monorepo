@@ -5,15 +5,25 @@ import { v4 as uuidv4 } from "uuid"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useBettingHouse } from "@/hooks/useBettingHouse"
+import { useAccount } from "wagmi"
+import { toast } from "sonner"
+import { extractBetIdFromTxHash, formatBetCondition, calculateDeadline } from "@/lib/betUtils"
+import { getTokenList, getTokenBySymbol, DEFAULT_TOKEN, type Token } from "@/lib/tokens"
 
 export default function CreatePage() {
   const router = useRouter()
+  const { isConnected } = useAccount()
+  const { createBet, isSubmitting, isApproving } = useBettingHouse()
+  
   const [betName, setBetName] = useState("")
   const [friend, setFriend] = useState("")
   const [amount, setAmount] = useState("")
   const [desc, setDesc] = useState("")
   const [date, setDate] = useState<string>("")
   const [time, setTime] = useState<string>("")
+  const [selectedToken, setSelectedToken] = useState<Token>(DEFAULT_TOKEN)
   const [creating, setCreating] = useState(false)
   const [friendLookupLoading, setFriendLookupLoading] = useState(false)
   const [friendLookupError, setFriendLookupError] = useState<string | null>(null)
@@ -63,20 +73,64 @@ export default function CreatePage() {
   }, [friend])
 
   const onCreate = async () => {
-    if (!betName.trim() || !friend.trim() || !Number.isFinite(Number(amount))) return
+    if (!betName.trim() || !friend.trim() || !Number.isFinite(Number(amount))) {
+      toast.error("Please fill in all required fields")
+      return
+    }
+
+    if (!isConnected) {
+      toast.error("Please connect your wallet first")
+      return
+    }
+
+    if (!friendVerifiedAddress) {
+      toast.error("Friend must have a verified Farcaster wallet")
+      return
+    }
+
     setCreating(true)
-    const id = uuidv4()
-    const sp = new URLSearchParams({
-      desc: betName.trim(),
-      stake: String(Number(amount)),
-      from: "You",
-      to: friend.trim(),
-      status: "pending",
-    })
-    if (desc.trim()) sp.set("desc", desc.trim())
-    if (date) sp.set("date", date)
-    if (time) sp.set("time", time)
-    router.push(`/dare/${id}/share?${sp.toString()}`)
+    
+    try {
+      const deadline = calculateDeadline(date, time);
+      const condition = formatBetCondition(betName, desc);
+      
+      const result = await createBet(
+        friendVerifiedAddress as `0x${string}`,
+        condition,
+        amount,
+        deadline,
+        selectedToken
+      );
+
+      if (result.success && result.hash) {
+        // Extract bet ID from transaction
+        const betId = await extractBetIdFromTxHash(result.hash);
+        
+        const id = uuidv4();
+        const sp = new URLSearchParams({
+          desc: betName.trim(),
+          stake: amount,
+          from: "You",
+          to: friend.trim(),
+          status: "pending",
+          txHash: result.hash,
+          token: selectedToken.symbol,
+        });
+        
+        if (betId !== null) {
+          sp.set("betId", String(betId));
+        }
+        if (desc.trim()) sp.set("desc", desc.trim());
+        if (date) sp.set("date", date);
+        if (time) sp.set("time", time);
+        
+        router.push(`/dare/${id}/share?${sp.toString()}`);
+      }
+    } catch (error) {
+      console.error("Failed to create bet:", error);
+    } finally {
+      setCreating(false);
+    }
   }
 
   return (
@@ -121,11 +175,38 @@ export default function CreatePage() {
 
           <div className="space-y-1.5">
             <div className="text-[13px] font-semibold">Bet Amount</div>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">$</div>
-              <Input value={amount} inputMode="decimal" onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="1200" className="h-11 pl-8 rounded-2xl bg-white focus-visible:ring-[#6A33FF] border-transparent shadow-sm" />
+            <div className="grid grid-cols-3 gap-2">
+              <div className="col-span-2">
+                <Input 
+                  value={amount} 
+                  inputMode="decimal" 
+                  onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))} 
+                  placeholder="1200" 
+                  className="h-11 rounded-2xl bg-white focus-visible:ring-[#6A33FF] border-transparent shadow-sm" 
+                />
+              </div>
+              <Select value={selectedToken.symbol} onValueChange={(value) => {
+                const token = getTokenBySymbol(value);
+                if (token) setSelectedToken(token);
+              }}>
+                <SelectTrigger className="h-11 rounded-2xl bg-white focus-visible:ring-[#6A33FF] border-transparent shadow-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {getTokenList().map((token) => (
+                    <SelectItem key={token.symbol} value={token.symbol}>
+                      <div className="flex items-center gap-2">
+                        <span>{token.icon}</span>
+                        <span>{token.symbol}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="text-xs text-foreground/60">You bet {Number(amount || 0)} USDC</div>
+            <div className="text-xs text-foreground/60">
+              You bet {Number(amount || 0).toLocaleString()} {selectedToken.symbol}
+            </div>
           </div>
 
           <div className="space-y-1.5">
@@ -142,8 +223,15 @@ export default function CreatePage() {
           </div>
 
           <div className="pt-2">
-            <Button onClick={onCreate} disabled={creating} className="w-full h-12 rounded-2xl bg-black text-white text-base shadow-[0_4px_0_#2b2b2b] active:translate-y-[2px] active:shadow-[0_2px_0_#2b2b2b]">
-              Create the Bet
+            <Button 
+              onClick={onCreate} 
+              disabled={creating || isSubmitting || isApproving || !isConnected || !friendVerifiedAddress} 
+              className="w-full h-12 rounded-2xl bg-black text-white text-base shadow-[0_4px_0_#2b2b2b] active:translate-y-[2px] active:shadow-[0_2px_0_#2b2b2b] disabled:opacity-50"
+            >
+              {!isConnected ? "Connect Wallet" : 
+               isApproving ? `Approving ${selectedToken.symbol}...` :
+               creating || isSubmitting ? "Creating..." : 
+               "Create the Bet"}
             </Button>
           </div>
         </div>
