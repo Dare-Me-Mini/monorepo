@@ -13,6 +13,11 @@ async function main() {
   if (!fs.existsSync(indexerAbisDir)) {
     fs.mkdirSync(indexerAbisDir, { recursive: true });
   }
+    
+  const miniAppAbisDir = path.resolve(__dirname, "../../mini-app/abis");
+  if (!fs.existsSync(miniAppAbisDir)) {
+    fs.mkdirSync(miniAppAbisDir, {recursive: true});
+  }
 
   const tsContent = `export const BettingHouseAbi = ${JSON.stringify(
     bettingHouse.abi,
@@ -21,8 +26,10 @@ async function main() {
   )} as const;\n`;
 
   fs.writeFileSync(path.join(indexerAbisDir, "BettingHouseAbi.ts"), tsContent, "utf8");
+  fs.writeFileSync(path.join(miniAppAbisDir, "BettingHouseAbi.ts"), tsContent, "utf8");
 
   console.log(`Wrote BettingHouseAbi.ts to ${path.join(indexerAbisDir, "BettingHouseAbi.ts")}`);
+  console.log(`Wrote BettingHouseAbi.ts to ${path.join(miniAppAbisDir, "BettingHouseAbi.ts")}`);
 }
 
 main().catch((err) => {
