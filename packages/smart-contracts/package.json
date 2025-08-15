@@ -11,6 +11,10 @@
   "scripts": {
     "generate-abi": "hardhat run ./scripts/generate-abi.ts",
     "deploy": "hardhat run ./scripts/deploy.ts",
-    "upgrade": "hardhat run ./scripts/upgrade.ts"
+    "upgrade": "hardhat run ./scripts/upgrade.ts",
+    "set:fees": "hardhat run ./scripts/admin/setFees.ts",
+    "set:feeRecipient": "hardhat run ./scripts/admin/setFeeRecipient.ts",
+    "token:add": "hardhat run ./scripts/admin/addSupportedToken.ts",
+    "token:remove": "hardhat run ./scripts/admin/removeSupportedToken.ts"
   }
 }
