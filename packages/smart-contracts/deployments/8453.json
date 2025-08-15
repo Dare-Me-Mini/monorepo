@@ -1,0 +1,9 @@
+{
+  "chainId": 8453,
+  "network": "base",
+  "proxy": "0xf60f49934d6519573BFe2C9971330e3e97158257",
+  "implementation": "0x38946f363536Bda43c70f8474b959e152f0B4719",
+  "deployedBy": "0x33694167071354595EaCC55D2Db89342D1299cDA",
+  "timestamp": "2025-08-15T08:54:44.125Z",
+  "deploymentBlock": 34229361
+}

@@ -20,6 +20,10 @@ async function main() {
   console.log(`Proxy deployed at: ${proxyAddress}`);
   console.log(`Implementation at: ${implAddress}`);
 
+  // Get deployment transaction details
+  const deploymentTx = proxy.deploymentTransaction();
+  const deploymentBlock = deploymentTx ? await deploymentTx.wait() : null;
+
   // Persist addresses under deployments/<chainId>.json
   const deploymentsDir = path.resolve(__dirname, "../deployments");
   const outfile = path.join(deploymentsDir, `${network.chainId}.json`);
@@ -31,6 +35,7 @@ async function main() {
     implementation: implAddress,
     deployedBy: deployer.address,
     timestamp: new Date().toISOString(),
+    deploymentBlock: deploymentBlock?.blockNumber || null,
   } as const;
   fs.writeFileSync(outfile, JSON.stringify(payload, null, 2));
   console.log(`Saved deployment to ${outfile}`);
