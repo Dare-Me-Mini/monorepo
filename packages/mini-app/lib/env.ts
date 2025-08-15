@@ -7,7 +7,7 @@ const publicEnvSchema = z.object({
 
 export const validatePublicEnv = () => {
     return publicEnvSchema.parse({
-        bettingHouseContractAddress: process.env.BETTING_HOUSE_CONTRACT_ADDRESS,
-        rpcUrl: process.env.RPC_URL,
+        bettingHouseContractAddress: process.env.NEXT_PUBLIC_BETTING_HOUSE_CONTRACT_ADDRESS,
+        rpcUrl: process.env.NEXT_PUBLIC_RPC_URL,
     });
 }
