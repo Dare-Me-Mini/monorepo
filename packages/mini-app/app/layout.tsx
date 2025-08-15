@@ -3,6 +3,9 @@ import type { Metadata, Viewport } from "next"
 import { Inter, Space_Grotesk } from "next/font/google"
 import "./globals.css"
 import MiniAppReady from "../components/MiniAppReady"
+import BottomNav from "@/components/BottomNav"
+import Providers from "./providers"
+import WalletAutoConnect from "@/components/WalletAutoConnect"
 
 const PROD = process.env.NEXT_PUBLIC_APP_URL || "https://dare-me-eight.vercel.app"
 
@@ -51,8 +54,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable} antialiased`}>
       <body className="min-h-dvh bg-background text-foreground pb-[env(safe-area-inset-bottom)]">
-        <MiniAppReady />
-        {children}
+        <Providers>
+          <MiniAppReady />
+          <WalletAutoConnect />
+          {children}
+          <BottomNav />
+        </Providers>
       </body>
     </html>
   )

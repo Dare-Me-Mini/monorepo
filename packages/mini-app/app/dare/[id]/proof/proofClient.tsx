@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import ThemeToggle from '@/components/ThemeToggle'
 
 type Proof = { url: string; note: string; createdAt: number }
 
@@ -49,7 +48,6 @@ export default function ProofClient({ id }: { id: string }) {
       <div className="mx-auto w-full max-w-xl space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Submit proof</h1>
-          <ThemeToggle />
         </div>
 
         <Card className="bg-card border-border text-card-foreground">

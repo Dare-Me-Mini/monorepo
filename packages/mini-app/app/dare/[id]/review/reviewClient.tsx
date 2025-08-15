@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import ThemeToggle from '@/components/ThemeToggle'
 
 type Proof = { url: string; note: string; createdAt: number }
 
@@ -50,7 +49,6 @@ export default function ReviewClient({ id }: { id: string }) {
       <div className="mx-auto w-full max-w-xl space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Review proof</h1>
-          <ThemeToggle />
         </div>
 
         <Card className="bg-card border-border text-card-foreground">

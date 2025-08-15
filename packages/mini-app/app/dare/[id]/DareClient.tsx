@@ -7,7 +7,6 @@ import { sdk } from '@farcaster/miniapp-sdk'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import ThemeToggle from '@/components/ThemeToggle'
 
 type DareStatus = 'pending' | 'accepted' | 'rejected' | 'completed'
 
@@ -84,7 +83,6 @@ export default function DareClient({ id }: { id: string }) {
             <ArrowLeftIcon className="h-5 w-5" />
           </Link>
           <div className="flex items-center gap-3">
-            <ThemeToggle />
             {copied && <span className="text-sm text-emerald-300">Link copied</span>}
             <Button variant="outline" onClick={shareLink}>
               Share

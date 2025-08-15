@@ -83,27 +83,49 @@ export default function ShareClient({ id }: { id: string }) {
   }
 
   return (
-    <main className="min-h-dvh p-4 md:p-6 bg-background text-foreground">
-      <div className="mx-auto w-full max-w-xl space-y-6">
-        <Card className="bg-card border-border text-card-foreground">
-          <CardContent className="p-4 space-y-4">
-            <div className="relative aspect-[3/2] w-full overflow-hidden rounded-md border border-border">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={objectUrl || imageUrl}
-                alt="Dare preview"
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-foreground/70">Preview your dare</div>
-              <div className="flex items-center gap-3">
-                {copied && <span className="text-xs text-emerald-400">Link copied</span>}
-                <Button onClick={share}>Share</Button>
+    <main className="min-h-dvh bg-background text-foreground pb-24">
+      <div className="mx-auto w-full max-w-xl space-y-4">
+        <div className="relative overflow-hidden rounded-b-[32px] bg-[#6A33FF] text-white pt-8 pb-5 px-5 shadow-xl bg-cover bg-center" style={{ backgroundImage: "url('/confetti-bg.svg')" }}>
+          <div className="text-center font-display font-extrabold text-[26px]">Wooho! Your Bet has been Created</div>
+          {/* decorative fold removed */}
+        </div>
+        <Card className="bg-transparent border-none text-card-foreground mx-3 shadow-none">
+          <CardContent className="p-0 space-y-3">
+            <div className="relative aspect-[5/4] w-full overflow-hidden rounded-2xl">
+              <div className="absolute inset-0" />
+              <div className="absolute -bottom-24 left-1/2 -translate-x-1/2 w-[120%] h-[240px] rounded-[999px]" />
+              <div className="relative z-10 h-full flex flex-col justify-center items-center px-4">
+                <div className="w-full flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-12 w-12 rounded-full overflow-hidden ring-2 ring-white/40">
+                      <img alt="from" src={`https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(from)}`} className="h-full w-full object-cover" />
+                    </div>
+                    <div className="px-3 py-1.5 rounded-full bg-white/20 text-white text-sm font-semibold">@{from.replace(/^@/, '')}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="px-3 py-1.5 rounded-full bg-white/20 text-white text-sm font-semibold">@{to.replace(/^@/, '')}</div>
+                    <div className="h-12 w-12 rounded-full overflow-hidden ring-2 ring-white/40">
+                      <img alt="to" src={`https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(to)}`} className="h-full w-full object-cover" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-3 bg-white text-[#1c1c1c] rounded-2xl w-full max-w-[90%] p-4 shadow-xl text-center text-[17px] font-semibold">
+                  Challenge is to {desc}
+                  <span role="img" aria-label="paper-plane" className="inline-block ml-2">
+                    ✈️
+                  </span>
+                </div>
               </div>
             </div>
+            <div className="text-xs text-foreground/70 px-1">The challenge has not been accepted yet</div>
           </CardContent>
         </Card>
+        <div className="px-3">
+          <Button onClick={share} className="w-full h-12 rounded-2xl bg-black text-white text-base shadow-[0_4px_0_#2b2b2b] active:translate-y-[2px] active:shadow-[0_2px_0_#2b2b2b]">
+            Share to Farcaster
+          </Button>
+        </div>
       </div>
     </main>
   )
