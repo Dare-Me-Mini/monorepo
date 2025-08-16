@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Rocket, Trophy, Zap, Clock, CheckCircle } from "lucide-react"
+import { Rocket, Trophy, Zap, Clock, CheckCircle, Home, Plus, User } from "lucide-react"
 import { SignInButton } from "@farcaster/auth-kit"
 import { useAppState } from "@/components/AppStateProvider"
 import { useUserBets } from "@/hooks/useUserBets"
@@ -16,30 +16,23 @@ const BrandHeader = () => {
   const { activeAddress, isAuthenticated } = useAppState()
   const displayAddress = activeAddress ? `${activeAddress.slice(0, 6)}…${activeAddress.slice(-4)}` : (isAuthenticated ? '—' : 'Sign in')
   return (
-    <div className="relative overflow-hidden rounded-b-[52px] bg-[#6A33FF] text-white pt-8 pb-16 px-6 shadow-xl">
-      <div className="flex items-center justify-between">
-        <div className="text-2xl font-extrabold font-display">ibet</div>
-        <div className="rounded-full px-4 py-2 text-sm bg-white/20 backdrop-blur-sm">
-          {!activeAddress && !isAuthenticated ? <SignInButton /> : displayAddress}
-        </div>
-      </div>
-      <div className="mt-8 leading-[0.95]">
-        <div className="font-extrabold text-[56px] tracking-tight font-display flex flex-col">
-          <div className="flex items-center">
-            Bet
-            <Rocket className="ml-2 h-10 w-10" />
+    <div className="relative overflow-hidden rounded-b-[60px] bg-[#7C3AED] text-white pt-8 pb-12 px-6">
+      <div className="flex items-center justify-between mb-8">
+        <div className="text-2xl font-bold">ibetyou</div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
+            <div className="w-3 h-3 bg-white rounded-full"></div>
           </div>
-          <div className="flex items-center">
-            Compete
-            <Zap className="ml-2 h-10 w-10" />
-          </div>
-          <div className="flex items-center">
-            Win
-            <Trophy className="ml-2 h-10 w-10" />
+          <div className="text-sm font-medium">
+            {displayAddress}
           </div>
         </div>
       </div>
-      {/* decorative fold removed */}
+      <div className="text-center">
+        <div className="text-4xl font-bold mb-2">
+          Bet 🚀 & ⚡ Compete
+        </div>
+      </div>
     </div>
   )
 }
@@ -48,29 +41,43 @@ type DareStatus = "pending" | "accepted" | "rejected" | "completed"
 
 export type Dare = { id: string; description: string; stakeUsd: number; challenger: string; challengee: string; status: DareStatus; createdAt: number }
 
-const BetCard = ({ bet, onClick }: { bet: any; onClick: () => void }) => (
-  <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={onClick}>
-    <CardContent className="p-4">
-      <div className="flex items-start justify-between mb-2">
-        <div className="text-sm font-medium truncate flex-1 mr-2">{bet.condition}</div>
-        <div className={`text-xs px-2 py-1 rounded-full ${getBetStatusColor(bet.status)}`}>
-          {bet.statusLabel}
-        </div>
+const BetCard = ({ bet, onClick, showActions = false }: { bet: any; onClick: () => void; showActions?: boolean }) => (
+  <div className="bg-white rounded-3xl border-4 border-black p-6 shadow-lg cursor-pointer hover:shadow-xl transition-shadow" onClick={onClick}>
+    <div className="flex items-start gap-4 mb-4">
+      <div className="bg-[#7C3AED] text-white px-4 py-2 rounded-2xl font-bold text-lg">
+        ${bet.amount}
       </div>
-      <div className="flex items-center justify-between text-sm text-foreground/70">
-        <div className="flex items-center gap-1">
-          <span>{bet.token.icon}</span>
-          <span>{bet.amount} {bet.token.symbol}</span>
-        </div>
-        <div className="text-xs">
-          {bet.createdAt.toLocaleDateString()}
-        </div>
+      <div className="flex-1">
+        <p className="text-gray-800 font-medium">
+          {bet.condition}
+        </p>
       </div>
-      <div className="text-xs text-foreground/60 mt-1">
-        {bet.isChallenger ? 'You challenged' : 'You were challenged'}
+    </div>
+    
+    {showActions && bet.status === 'OPEN' && !bet.isChallenger && (
+      <div className="flex gap-3 mb-4">
+        <button className="flex-1 bg-green-500 text-white py-3 rounded-2xl font-bold hover:bg-green-600 transition-colors">
+          Accept Bet
+        </button>
+        <button className="flex-1 border-2 border-red-500 text-red-500 py-3 rounded-2xl font-bold hover:bg-red-50 transition-colors">
+          Reject Bet
+        </button>
       </div>
-    </CardContent>
-  </Card>
+    )}
+    
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+        <span className="font-medium text-gray-700">
+          {bet.isChallenger ? 'You challenged' : 'Challenged by'} {bet.isChallenger ? bet.challengee : bet.challenger}
+        </span>
+      </div>
+      <div className="flex items-center gap-1 text-green-600">
+        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+        <span className="text-sm font-medium">24 Hours</span>
+      </div>
+    </div>
+  </div>
 )
 
 export default function Page() {
@@ -142,33 +149,20 @@ export default function Page() {
 
 
   return (
-    <main className="min-h-dvh bg-background text-foreground pb-24">
+    <main className="min-h-dvh bg-gray-50 text-foreground pb-24">
       <div className="mx-auto w-full max-w-xl">
         <BrandHeader />
 
         <div className="px-4 py-5 space-y-6">
-          {/* Create Bet Button */}
-          <div>
-            <Button
-              className={`w-full h-14 rounded-2xl text-lg font-extrabold shadow-[0_8px_0_#2b2b2b] active:translate-y-[2px] active:shadow-[0_4px_0_#2b2b2b] ${
-                isConnected
-                  ? 'bg-black text-white'
-                  : 'bg-gray-400 text-gray-200 cursor-not-allowed'
-              }`}
-              onClick={handleCreateBetClick}
-              disabled={!isConnected}
-            >
-              {isConnected ? 'Make a Bet' : 'Connect Wallet to Bet'}
-            </Button>
-          </div>
 
           {/* Bets List */}
           {activeAddress && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Your Bets</h2>
-                {loading && <div className="text-sm text-foreground/60">Loading...</div>}
-              </div>
+              {loading && (
+                <div className="text-center py-8">
+                  <div className="text-lg text-gray-600">Loading your bets...</div>
+                </div>
+              )}
 
               {betsError && (
                 <div className="text-red-500 text-sm p-3 bg-red-50 rounded-lg">
@@ -177,39 +171,33 @@ export default function Page() {
               )}
 
               {!loading && bets.length === 0 && !betsError && (
-                <div className="text-center py-8 text-foreground/60">
-                  <div className="text-4xl mb-2">🎯</div>
-                  <div>No bets yet</div>
-                  <div className="text-sm">Create your first bet to get started!</div>
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-4">🎯</div>
+                  <div className="text-xl font-semibold text-gray-800 mb-2">No bets yet</div>
+                  <div className="text-gray-600">Create your first bet to get started!</div>
                 </div>
               )}
 
               {/* Active Bets */}
               {activeBets.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <Clock className="h-4 w-4" />
-                    <span>Active ({activeBets.length})</span>
-                  </div>
+                <div className="space-y-4">
+                  <h2 className="text-2xl font-bold text-gray-800">Active Bets</h2>
                   {activeBets.map((bet) => (
-                    <BetCard key={bet.id} bet={bet} onClick={() => handleBetClick(bet)} />
+                    <BetCard key={bet.id} bet={bet} onClick={() => handleBetClick(bet)} showActions={true} />
                   ))}
                 </div>
               )}
 
               {/* Completed Bets */}
               {completedBets.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Completed ({completedBets.length})</span>
-                  </div>
-                  {completedBets.slice(0, 5).map((bet) => (
+                <div className="space-y-4">
+                  <h2 className="text-2xl font-bold text-gray-800">Completed Bets</h2>
+                  {completedBets.slice(0, 3).map((bet) => (
                     <BetCard key={bet.id} bet={bet} onClick={() => handleBetClick(bet)} />
                   ))}
-                  {completedBets.length > 5 && (
-                    <div className="text-center text-sm text-foreground/60">
-                      +{completedBets.length - 5} more completed bets
+                  {completedBets.length > 3 && (
+                    <div className="text-center text-sm text-gray-600 mt-4">
+                      +{completedBets.length - 3} more completed bets
                     </div>
                   )}
                 </div>
@@ -223,6 +211,24 @@ export default function Page() {
               <div>Connect your wallet to view your bets</div>
             </div>
           )}
+        </div>
+
+        {/* Bottom Navigation */}
+        <div className="fixed bottom-0 left-0 right-0 bg-[#7C3AED] rounded-t-3xl">
+          <div className="flex items-center justify-around py-4 px-6 max-w-xl mx-auto">
+            <button className="p-3 bg-white rounded-full">
+              <Home className="w-6 h-6 text-[#7C3AED]" />
+            </button>
+            <button 
+              className="p-4 bg-white rounded-full"
+              onClick={handleCreateBetClick}
+            >
+              <Plus className="w-8 h-8 text-[#7C3AED]" />
+            </button>
+            <button className="p-3">
+              <User className="w-6 h-6 text-white" />
+            </button>
+          </div>
         </div>
       </div>
     </main>

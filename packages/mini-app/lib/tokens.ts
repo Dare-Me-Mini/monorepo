@@ -41,7 +41,7 @@ export const formatTokenAmount = (amount: bigint | string | number, token: Token
   const quotient = amountBigInt / divisor;
   const remainder = amountBigInt % divisor;
   
-  if (remainder === 0n) {
+  if (remainder === BigInt(0)) {
     return quotient.toString();
   }
   
