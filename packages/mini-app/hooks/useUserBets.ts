@@ -85,9 +85,9 @@ export function useUserBets(options: UseUserBetsOptions = {}) {
           isChallengee: bet.challengee.toLowerCase() === userAddress,
           proof: bet.proof,
           isClosed: bet.isClosed,
-          createdAt: new Date(bet.createdTimestamp),
-          acceptanceDeadline: new Date(bet.acceptanceDeadline),
-          proofSubmissionDeadline: new Date(bet.proofSubmissionDeadline),
+          createdAt: new Date(parseInt(bet.createdTimestamp, 10)),
+          acceptanceDeadline: new Date(parseInt(bet.acceptanceDeadline, 10)),
+          proofSubmissionDeadline: new Date(parseInt(bet.proofSubmissionDeadline, 10)),
         };
       });
 
