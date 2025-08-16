@@ -29,28 +29,52 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                 // Default options for all toasts
                 duration: 4000,
                 style: {
-                  background: '#363636',
-                  color: '#fff',
+                  background: '#ffffff',
+                  color: '#000000',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
                 },
                 // Default options for specific types
                 success: {
                   duration: 3000,
                   style: {
-                    background: '#10b981',
-                    color: '#fff',
+                    background: '#ffffff',
+                    color: '#000000',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(79, 70, 229, 0.3)',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    boxShadow: '0 10px 25px rgba(79, 70, 229, 0.3)',
+                  },
+                  iconTheme: {
+                    primary: '#4f46e5',
+                    secondary: '#ffffff',
                   },
                 },
                 error: {
                   duration: 5000,
                   style: {
-                    background: '#ef4444',
-                    color: '#fff',
+                    background: '#ffffff',
+                    color: '#000000',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(220, 38, 38, 0.3)',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    boxShadow: '0 10px 25px rgba(220, 38, 38, 0.3)',
                   },
                 },
                 loading: {
                   style: {
-                    background: '#3b82f6',
-                    color: '#fff',
+                    background: '#ffffff',
+                    color: '#000000',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(99, 102, 241, 0.3)',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    boxShadow: '0 10px 25px rgba(99, 102, 241, 0.3)',
                   },
                 },
               }}

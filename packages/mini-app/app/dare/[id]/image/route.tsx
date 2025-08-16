@@ -11,19 +11,35 @@ function truncate(text: string, max: number): string {
 
 export async function GET(req: Request, ctx: { params: { id: string } }) {
   try {
-    const url = new URL(req.url)
-    const { searchParams } = url
-    const desc = truncate(searchParams.get('desc') || 'A bold new challenge', 90)
-    const stake = String(searchParams.get('stake') || '20')
-    const from = truncate(searchParams.get('from') || 'Someone', 24)
-    const to = truncate(searchParams.get('to') || 'Friend', 24)
-    const status = (searchParams.get('status') || 'pending').toUpperCase()
+    const betId = ctx.params.id
+
+    // Fetch bet data from indexer API
+    const indexerUrl = process.env.NEXT_PUBLIC_INDEXER_URL || 'http://localhost:42069'
+    let desc = 'A bold new challenge'
+    let stake = '20'
+    let from = 'Someone'
+    let to = 'Friend'
+    let status = 'PENDING'
+
+    try {
+      const response = await fetch(`${indexerUrl}/bets/${betId}`)
+      if (response.ok) {
+        const bet = await response.json()
+        desc = truncate(bet.condition || 'A bold new challenge', 90)
+        stake = String(bet.amount || '20')
+        from = truncate(bet.challengerUsername || 'Someone', 24)
+        to = truncate(bet.challengeeUsername || 'Friend', 24)
+        status = (bet.lastUpdatedStatus || 'pending').toUpperCase()
+      }
+    } catch (error) {
+      console.error('Failed to fetch bet data for image generation:', error)
+      // Continue with fallback values
+    }
 
     // Server-side logs (visible in Vercel logs)
     try {
       console.log('[og-dare]', {
-        id: ctx?.params?.id,
-        url: url.toString(),
+        betId,
         desc,
         stake,
         from,

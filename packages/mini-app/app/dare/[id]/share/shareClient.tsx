@@ -1,40 +1,32 @@
 'use client'
 
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { sdk } from '@farcaster/miniapp-sdk'
+import { useBetDetails } from '@/hooks/useBetDetails'
 
 export default function ShareClient({ id }: { id: string }) {
-  const qp = useSearchParams()
   const [copied, setCopied] = useState(false)
-  const retriedRef = useRef(false)
-  const router = useRouter()
   const APP_URL = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
 
-  const desc = qp.get('desc') || 'A bold new challenge'
-  const stake = qp.get('stake') || '20'
-  const from = qp.get('from') || 'Someone'
-  const to = qp.get('to') || 'Friend'
-  const status = qp.get('status') || 'pending'
+  // Use the id from the URL path as the betId and fetch data from database
+  const betDetails = useBetDetails(id)
 
-  const imageUrl = useMemo(() => {
-    const sp = new URLSearchParams({ desc, stake, from, to, status, t: String(Date.now()) })
-    try {
-      if (typeof window !== 'undefined') {
-        return `${window.location.origin}/dare/${id}/image?${sp.toString()}`
-      }
-    } catch {}
-    return `/dare/${id}/image?${sp.toString()}`
-  }, [id, desc, stake, from, to, status])
+  // Use data from database or fallback values while loading
+  const desc = betDetails?.condition || 'A bold new challenge'
+  const from = betDetails?.challengerUsername || 'You'
+  const to = betDetails?.challengeeUsername || 'Friend'
+  const isLoading = betDetails?.loading || !betDetails
 
-  const [objectUrl, setObjectUrl] = useState<string | null>(null)
+
+
+
 
   const fullLink = useMemo(() => {
-    const sp = new URLSearchParams({ desc, stake, from, to, status })
-    return `${APP_URL}/dare/${id}?${sp.toString()}`
-  }, [APP_URL, id, desc, stake, from, to, status])
+    // Only pass betId in the URL, no other parameters needed
+    return `${APP_URL}/dare/${id}`
+  }, [APP_URL, id])
 
   useEffect(() => {
     ;(async () => {
@@ -42,25 +34,7 @@ export default function ShareClient({ id }: { id: string }) {
     })()
   }, [])
 
-  useEffect(() => {
-    let revoked = false
-    let currentUrl: string | null = null
-    ;(async () => {
-      try {
-        const res = await fetch(imageUrl, { cache: 'no-store' })
-        if (!res.ok) throw new Error('image fetch failed')
-        const blob = await res.blob()
-        currentUrl = URL.createObjectURL(blob)
-        if (!revoked) setObjectUrl(currentUrl)
-      } catch {
-        if (!revoked) setObjectUrl(null)
-      }
-    })()
-    return () => {
-      revoked = true
-      if (currentUrl) URL.revokeObjectURL(currentUrl)
-    }
-  }, [imageUrl])
+
 
   const share = async () => {
     // Temporarily disable Farcaster share; navigate to accept/reject page instead
@@ -111,10 +85,19 @@ export default function ShareClient({ id }: { id: string }) {
                 </div>
 
                 <div className="mt-3 bg-white text-[#1c1c1c] rounded-2xl w-full max-w-[90%] p-4 shadow-xl text-center text-[17px] font-semibold">
-                  Challenge is to {desc}
-                  <span role="img" aria-label="paper-plane" className="inline-block ml-2">
-                    ✈️
-                  </span>
+                  {isLoading ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-900"></div>
+                      <span className="ml-2">Loading challenge...</span>
+                    </div>
+                  ) : (
+                    <>
+                      Challenge is to {desc}
+                      <span role="img" aria-label="paper-plane" className="inline-block ml-2">
+                        ✈️
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

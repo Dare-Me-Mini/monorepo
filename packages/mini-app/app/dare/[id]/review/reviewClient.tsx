@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useBettingHouse } from '@/hooks/useBettingHouse'
@@ -11,24 +11,15 @@ import toast from 'react-hot-toast'
 type Proof = { url: string; note: string; createdAt: number }
 
 export default function ReviewClient({ id }: { id: string }) {
-  const qp = useSearchParams()
   const router = useRouter()
   const { isConnected } = useAccount()
   const { acceptProof, disputeProof, isSubmitting } = useBettingHouse()
   const [proof, setProof] = useState<Proof | null>(null)
-  const [betId, setBetId] = useState<number | null>(null)
+
+  // Use the id from the URL path as the betId
+  const betId = Number(id)
 
   const storageKey = useMemo(() => `dare-proof:${id}`, [id])
-
-  useEffect(() => {
-    const urlBetId = qp.get('betId')
-    if (urlBetId) {
-      setBetId(Number(urlBetId));
-    } else {
-      // Fallback to a placeholder - in a real app, this should be extracted from transaction
-      setBetId(1);
-    }
-  }, [qp])
 
   useEffect(() => {
     try {
@@ -87,8 +78,7 @@ export default function ReviewClient({ id }: { id: string }) {
         }
       } catch {}
       // Go back to dare detail page
-      const params = new URLSearchParams(qp.toString())
-      router.push(`/dare/${id}?${params.toString()}`)
+      router.push(`/dare/${id}`)
     }
   }
 
@@ -110,8 +100,7 @@ export default function ReviewClient({ id }: { id: string }) {
   }
 
   const goToProof = () => {
-    const params = new URLSearchParams(qp.toString())
-    router.push(`/dare/${id}/proof?${params.toString()}`)
+    router.push(`/dare/${id}/proof`)
   }
 
   return (

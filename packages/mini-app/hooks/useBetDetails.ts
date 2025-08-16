@@ -23,6 +23,13 @@ interface BetDetails {
   updatedAt: Date;
   loading: boolean;
   error: string | null;
+  // Farcaster user data
+  challengerFid?: number;
+  challengerUsername?: string;
+  challengerPfp?: string;
+  challengeeFid?: number;
+  challengeeUsername?: string;
+  challengeePfp?: string;
 }
 
 export function useBetDetails(betId: string | number | null) {
@@ -56,7 +63,14 @@ export function useBetDetails(betId: string | number | null) {
             createdAt: new Date(),
             updatedAt: new Date(),
             loading: false,
-            error: "Bet not found"
+            error: "Bet not found",
+            // Farcaster user data
+            challengerFid: undefined,
+            challengerUsername: undefined,
+            challengerPfp: undefined,
+            challengeeFid: undefined,
+            challengeeUsername: undefined,
+            challengeePfp: undefined,
           });
           return;
         }
@@ -86,7 +100,14 @@ export function useBetDetails(betId: string | number | null) {
           createdAt: new Date(bet.createdTimestamp),
           updatedAt: new Date(bet.updatedAt),
           loading: false,
-          error: null
+          error: null,
+          // Farcaster user data
+          challengerFid: bet.challengerFid,
+          challengerUsername: bet.challengerUsername,
+          challengerPfp: bet.challengerPfp,
+          challengeeFid: bet.challengeeFid,
+          challengeeUsername: bet.challengeeUsername,
+          challengeePfp: bet.challengeePfp,
         });
       } catch (error) {
         console.error("Failed to fetch bet details:", error);

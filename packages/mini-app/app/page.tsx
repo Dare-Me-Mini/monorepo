@@ -133,7 +133,7 @@ export default function Page() {
 
   const handleBetClick = (bet: any) => {
     try {
-      router.push(`/dare/${bet.id}?betId=${bet.id}&desc=${encodeURIComponent(bet.condition)}&stake=${bet.amount}&token=${bet.token.symbol}`)
+      router.push(`/dare/${bet.id}`)
     } catch (err) {
       console.error('Navigation failed:', err)
       managedToast.error('Failed to open bet')

@@ -23,18 +23,18 @@ export default function DareClient({ id }: { id: string }) {
   const { acceptBet, rejectBet, isSubmitting, isApproving } = useBettingHouse()
   const [copied, setCopied] = useState(false)
 
-  // Get bet ID from URL params
-  const urlBetId = qp.get('betId')
-  const betDetails = useBetDetails(urlBetId)
+  // Use the id from the URL path as the betId and fetch data from database
+  const betDetails = useBetDetails(id)
 
-  // Fallback to URL params if indexer data not available
-  const description = betDetails?.condition || qp.get('desc') || 'A bold new challenge'
-  const stake = betDetails?.amount || qp.get('stake') || '20'
-  const token = betDetails?.token || getTokenBySymbol(qp.get('token') || 'USDC') || DEFAULT_TOKEN
-  const from = qp.get('from') || 'Someone'
-  const to = qp.get('to') || 'Friend'
+  // Use data from database with fallback values while loading
+  const description = betDetails?.condition || 'A bold new challenge'
+  const stake = betDetails?.amount || '20'
+  const token = betDetails?.token || DEFAULT_TOKEN
+  const from = betDetails?.challengerUsername || 'Someone'
+  const to = betDetails?.challengeeUsername || 'Friend'
   const status = betDetails?.status || 'OPEN'
   const statusLabel = betDetails?.statusLabel || 'Open'
+  const isLoading = betDetails?.loading || !betDetails
 
   useEffect(() => {
     ;(async () => {
@@ -48,12 +48,12 @@ export default function DareClient({ id }: { id: string }) {
       return;
     }
     
-    if (!urlBetId) {
+    if (!id) {
       toast.error("Bet ID not found");
       return;
     }
 
-    const result = await acceptBet(Number(urlBetId));
+    const result = await acceptBet(Number(id));
     if (result.success) {
       toast.success("Bet accepted successfully!");
       // Refresh bet details after successful transaction
@@ -67,12 +67,12 @@ export default function DareClient({ id }: { id: string }) {
       return;
     }
     
-    if (!urlBetId) {
+    if (!id) {
       toast.error("Bet ID not found");
       return;
     }
 
-    const result = await rejectBet(Number(urlBetId));
+    const result = await rejectBet(Number(id));
     if (result.success) {
       toast.success("Bet rejected successfully!");
       // Refresh bet details after successful transaction
@@ -81,16 +81,8 @@ export default function DareClient({ id }: { id: string }) {
   }
 
   const shareLink = async () => {
-    const params = new URLSearchParams({
-      desc: description,
-      stake: stake,
-      from,
-      to,
-      status: statusLabel,
-      token: token.symbol
-    })
-    if (urlBetId) params.set('betId', urlBetId)
-    const url = `${window.location.origin}/dare/${id}?${params.toString()}&t=${Date.now()}`
+    // Only pass betId in the URL, no other parameters needed
+    const url = `${window.location.origin}/dare/${id}?t=${Date.now()}`
     try {
       await sdk.actions.composeCast({ text: url })
       toast.success("Cast created successfully!")
@@ -160,10 +152,10 @@ export default function DareClient({ id }: { id: string }) {
             <div className="pt-2 flex gap-3">
               {status === 'OPEN' && (
                 <>
-                  <Button onClick={accept} disabled={isSubmitting || isApproving || !isConnected || !urlBetId}>
+                  <Button onClick={accept} disabled={isSubmitting || isApproving || !isConnected || !id}>
                     {isApproving ? `Approving ${token.symbol}...` : isSubmitting ? "Processing..." : "Accept"}
                   </Button>
-                  <Button variant="outline" onClick={reject} disabled={isSubmitting || isApproving || !isConnected || !urlBetId}>
+                  <Button variant="outline" onClick={reject} disabled={isSubmitting || isApproving || !isConnected || !id}>
                     {isSubmitting ? "Processing..." : "Reject"}
                   </Button>
                 </>
@@ -171,28 +163,10 @@ export default function DareClient({ id }: { id: string }) {
               {(status === 'ACCEPTED' || status === 'PROOF_SUBMITTED') && (
                 <>
                   <Button variant="outline" onClick={() => {
-                    const params = new URLSearchParams({ 
-                      desc: description, 
-                      stake: stake, 
-                      from, 
-                      to, 
-                      status,
-                      token: token.symbol,
-                      ...(urlBetId && { betId: urlBetId })
-                    })
-                    router.push(`/dare/${id}/proof?${params.toString()}`)
+                    router.push(`/dare/${id}/proof`)
                   }}>Submit Proof</Button>
                   <Button variant="outline" onClick={() => {
-                    const params = new URLSearchParams({ 
-                      desc: description, 
-                      stake: stake, 
-                      from, 
-                      to, 
-                      status,
-                      token: token.symbol,
-                      ...(urlBetId && { betId: urlBetId })
-                    })
-                    router.push(`/dare/${id}/review?${params.toString()}`)
+                    router.push(`/dare/${id}/review`)
                   }}>Review Proof</Button>
                 </>
               )}

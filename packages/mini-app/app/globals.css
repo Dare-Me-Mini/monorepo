@@ -109,3 +109,17 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom toast icon styling */
+.react-hot-toast div[data-icon="✅"] {
+  background-color: #4f46e5 !important; /* Indigo background for success icon */
+}
+
+.react-hot-toast div[role="status"] > div:first-child {
+  background-color: #4f46e5 !important; /* Target success icon container */
+}
+
+/* More specific targeting for react-hot-toast success icons */
+.react-hot-toast > div > div:first-child[style*="background-color: rgb(34, 197, 94)"] {
+  background-color: #4f46e5 !important; /* Override green with indigo */
+}

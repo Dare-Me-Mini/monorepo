@@ -6,15 +6,10 @@ const PROD = process.env.NEXT_PUBLIC_APP_URL || "https://dare-me-eight.vercel.ap
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-export async function generateMetadata({ params, searchParams }: { params: { id: string }, searchParams: { desc?: string, stake?: string, from?: string, to?: string, status?: string, t?: string } }): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: { params: { id: string }, searchParams: { t?: string } }): Promise<Metadata> {
   const url = `${PROD}/dare/${params.id}`
   const sp = new URLSearchParams()
-  if (searchParams?.desc) sp.set('desc', searchParams.desc)
-  if (searchParams?.stake) sp.set('stake', searchParams.stake)
-  if (searchParams?.from) sp.set('from', searchParams.from)
-  if (searchParams?.to) sp.set('to', searchParams.to)
-  if (searchParams?.status) sp.set('status', searchParams.status)
-  // Always include a cache-busting token to avoid stale previews in Farcaster
+  // Only include a cache-busting token to avoid stale previews in Farcaster
   sp.set('t', searchParams?.t ?? String(Math.floor(Date.now() / 1000)))
   const qs = sp.toString()
   const miniapp = {

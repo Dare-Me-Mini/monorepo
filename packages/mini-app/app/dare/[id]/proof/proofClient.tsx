@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,26 +13,17 @@ import toast from 'react-hot-toast'
 type Proof = { url: string; note: string; createdAt: number }
 
 export default function ProofClient({ id }: { id: string }) {
-  const qp = useSearchParams()
   const router = useRouter()
   const { isConnected } = useAccount()
   const { submitProof, isSubmitting } = useBettingHouse()
   const [url, setUrl] = useState('')
   const [note, setNote] = useState('')
   const [saved, setSaved] = useState(false)
-  const [betId, setBetId] = useState<number | null>(null)
+
+  // Use the id from the URL path as the betId
+  const betId = Number(id)
 
   const storageKey = useMemo(() => `dare-proof:${id}`, [id])
-
-  useEffect(() => {
-    const urlBetId = qp.get('betId')
-    if (urlBetId) {
-      setBetId(Number(urlBetId));
-    } else {
-      // Fallback to a placeholder - in a real app, this should be extracted from transaction
-      setBetId(1);
-    }
-  }, [qp])
 
   // Redirect if wallet is not connected
   useEffect(() => {
@@ -105,8 +96,7 @@ export default function ProofClient({ id }: { id: string }) {
   }
 
   const openReview = () => {
-    const params = new URLSearchParams(qp.toString())
-    router.push(`/dare/${id}/review?${params.toString()}`)
+    router.push(`/dare/${id}/review`)
   }
 
   return (

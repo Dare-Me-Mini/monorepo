@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { v4 as uuidv4 } from "uuid"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -139,26 +138,13 @@ export default function CreatePage() {
       if (result.success && result.hash) {
         // Extract bet ID from transaction
         const betId = await extractBetIdFromTxHash(result.hash);
-        
-        const id = uuidv4();
-        const sp = new URLSearchParams({
-          desc: betName.trim(),
-          stake: amount,
-          from: "You",
-          to: friend.trim(),
-          status: "pending",
-          txHash: result.hash,
-          token: selectedToken.symbol,
-        });
-        
+
         if (betId !== null) {
-          sp.set("betId", String(betId));
+          // Navigate directly to the bet share page using the actual betId
+          router.push(`/dare/${betId}/share`);
+        } else {
+          toast.error("Failed to extract bet ID from transaction. Please try again.");
         }
-        if (desc.trim()) sp.set("desc", desc.trim());
-        if (date) sp.set("date", date);
-        if (time) sp.set("time", time);
-        
-        router.push(`/dare/${id}/share?${sp.toString()}`);
       }
     } catch (error) {
       console.error("Failed to create bet:", error);
