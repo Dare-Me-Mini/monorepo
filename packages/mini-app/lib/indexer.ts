@@ -1,3 +1,5 @@
+import { validatePublicEnv } from "./env";
+
 // Indexer API client for fetching bet data
 export interface IndexerBet {
   id: string;
@@ -90,8 +92,9 @@ export interface BetFilter {
 class IndexerClient {
   private baseUrl: string;
 
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl.replace(/\/$/, '');
+  constructor() {
+    const env = validatePublicEnv();
+    this.baseUrl = env.indexerUrl.replace(/\/$/, '');
   }
 
   async getBet(id: string | number): Promise<IndexerBet | null> {
@@ -339,10 +342,7 @@ class IndexerClient {
   }
 }
 
-// Default indexer URL - should be configured via environment
-const INDEXER_URL = process.env.NEXT_PUBLIC_INDEXER_URL || 'http://localhost:42069';
-
-export const indexerClient = new IndexerClient(INDEXER_URL);
+export const indexerClient = new IndexerClient();
 
 // Utility functions
 export function getBetStatusLabel(status: BetStatus): string {

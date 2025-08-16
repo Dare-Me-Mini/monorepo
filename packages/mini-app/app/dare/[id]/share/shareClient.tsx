@@ -5,20 +5,19 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { sdk } from '@farcaster/miniapp-sdk'
+import { validatePublicEnv } from '@/lib/env'
 
 export default function ShareClient({ id }: { id: string }) {
   const qp = useSearchParams()
   const [copied, setCopied] = useState(false)
-  const retriedRef = useRef(false)
-  const router = useRouter()
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
+  const [objectUrl, setObjectUrl] = useState<string | null>(null)
 
   const desc = qp.get('desc') || 'A bold new challenge'
   const stake = qp.get('stake') || '20'
   const from = qp.get('from') || 'Someone'
   const to = qp.get('to') || 'Friend'
   const status = qp.get('status') || 'pending'
-
+  
   const imageUrl = useMemo(() => {
     const sp = new URLSearchParams({ desc, stake, from, to, status, t: String(Date.now()) })
     try {
@@ -28,13 +27,12 @@ export default function ShareClient({ id }: { id: string }) {
     } catch {}
     return `/dare/${id}/image?${sp.toString()}`
   }, [id, desc, stake, from, to, status])
-
-  const [objectUrl, setObjectUrl] = useState<string | null>(null)
-
+  
   const fullLink = useMemo(() => {
+    const env = validatePublicEnv();
     const sp = new URLSearchParams({ desc, stake, from, to, status })
-    return `${APP_URL}/dare/${id}?${sp.toString()}`
-  }, [APP_URL, id, desc, stake, from, to, status])
+    return `${env.appUrl}/dare/${id}?${sp.toString()}`
+  }, [id, desc, stake, from, to, status])
 
   useEffect(() => {
     ;(async () => {

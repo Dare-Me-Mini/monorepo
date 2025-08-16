@@ -1,19 +1,17 @@
 "use server"
 
+import { validateServerEnv } from '@/lib/env';
 import { Configuration, NeynarAPIClient } from '@neynar/nodejs-sdk'
 
 export async function getUserAddressByUsername(username: string): Promise<{ success: true; address: string } | { success: false; error: string }> {
+  const env = validateServerEnv();
+  
   try {
     if (!username || username.trim() === '') {
       return { success: false, error: 'Username is required' }
     }
 
-    const apiKey = process.env.NEYNAR_API_KEY
-    if (!apiKey) {
-      return { success: false, error: 'Neynar API key not configured' }
-    }
-
-    const config = new Configuration({ apiKey })
+    const config = new Configuration({ apiKey: env.neynarApiKey })
     const client = new NeynarAPIClient(config)
 
     // Remove @ symbol if present
