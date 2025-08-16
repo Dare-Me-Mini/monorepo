@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { sdk } from '@farcaster/miniapp-sdk'
-import { ArrowLeftIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, ChevronLeftIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useBettingHouse } from '@/hooks/useBettingHouse'
@@ -13,6 +13,7 @@ import toast from 'react-hot-toast'
 import { getTokenBySymbol, DEFAULT_TOKEN, formatTokenAmount, type Token } from '@/lib/tokens'
 import { useBetDetails } from '@/hooks/useBetDetails'
 import { getBetStatusColor } from '@/lib/indexer'
+import { getCurrentState, formatTimeRemaining } from '@/lib/betState'
 
 type DareStatus = 'pending' | 'accepted' | 'rejected' | 'completed'
 
@@ -22,6 +23,7 @@ export default function DareClient({ id }: { id: string }) {
   const { isConnected } = useAccount()
   const { acceptBet, rejectBet, isSubmitting, isApproving } = useBettingHouse()
   const [copied, setCopied] = useState(false)
+  const [currentTime, setCurrentTime] = useState(Date.now())
 
   // Use the id from the URL path as the betId and fetch data from database
   const betDetails = useBetDetails(id)
@@ -40,6 +42,14 @@ export default function DareClient({ id }: { id: string }) {
     ;(async () => {
       await sdk.actions.ready()
     })()
+  }, [])
+
+  // Update current time every second for live countdown
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now())
+    }, 1000)
+    return () => clearInterval(interval)
   }, [])
 
   const accept = async () => {
@@ -102,77 +112,185 @@ export default function DareClient({ id }: { id: string }) {
     }
   }
 
+  // Calculate bet state for countdown (recalculated every second)
+  const betState = betDetails ? getCurrentState({
+    lastUpdatedStatus: betDetails.status,
+    acceptanceDeadline: betDetails.acceptanceDeadline,
+    proofSubmissionDeadline: betDetails.proofSubmissionDeadline,
+    proofAcceptanceDeadline: betDetails.proofAcceptanceDeadline,
+    mediationDeadline: betDetails.mediationDeadline,
+    isClosed: betDetails.isClosed
+  }) : null
+
+  const formatCountdown = (timeRemaining: number) => {
+    if (timeRemaining <= 0) return "00:00:00"
+    const hours = Math.floor(timeRemaining / (1000 * 60 * 60))
+    const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60))
+    const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000)
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+  }
+
   return (
-    <main className="min-h-dvh p-4 md:p-6 bg-background text-foreground">
-      <div className="mx-auto w-full max-w-xl space-y-6">
-        <div className="flex items-center justify-between">
-          <Link href="/" className="text-white/80 hover:text-white">
-            <ArrowLeftIcon className="h-5 w-5" />
-          </Link>
-          <div className="flex items-center gap-3">
-            {copied && <span className="text-sm text-emerald-300">Link copied</span>}
-            <Button variant="outline" onClick={shareLink}>
-              Share
-            </Button>
+    <main className="min-h-dvh bg-gray-50 text-foreground">
+      <div className="mx-auto w-full max-w-xl">
+        {/* Purple Header */}
+        <div className="relative overflow-hidden rounded-b-[60px] bg-[#7C3AED] text-white pt-4 pb-8 px-6">
+          {/* Back button and share */}
+          <div className="flex items-center justify-between mb-6">
+            <Link href="/" className="text-white/80 hover:text-white">
+              <ChevronLeftIcon className="h-6 w-6" />
+            </Link>
+            <div className="flex items-center gap-3">
+              {copied && <span className="text-sm text-white/80">Link copied</span>}
+              <button onClick={shareLink} className="text-white/80 hover:text-white text-sm">
+                Share
+              </button>
+            </div>
+          </div>
+
+          {/* Challenge Header */}
+          <div className="text-center mb-8">
+            <div className="text-2xl font-bold mb-2">
+              @{from} has challenged you
+            </div>
+          </div>
+
+          {/* Chat Bubble Interface */}
+          <div className="relative mb-8">
+            {/* Challenger bubble (left side) */}
+            <div className="flex items-start gap-3 mb-4">
+              {betDetails?.challengerPfp ? (
+                <img 
+                  src={betDetails.challengerPfp} 
+                  alt={from} 
+                  className="w-12 h-12 rounded-full border-2 border-white" 
+                />
+              ) : (
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold text-lg">
+                    {from.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
+              <div className="bg-[#6B46C1] px-4 py-2 rounded-2xl rounded-tl-md">
+                <span className="text-white font-medium">@{from}</span>
+              </div>
+            </div>
+
+            {/* Challenge Text Bubble (center) */}
+            <div className="bg-white rounded-3xl p-6 mx-4 relative shadow-lg">
+              <div className="text-[#7C3AED] text-xl font-bold text-center">
+                {description}
+              </div>
+              {/* Bubble pointer to challengee */}
+              <div className="absolute -bottom-2 right-8 w-0 h-0 border-l-[16px] border-l-transparent border-r-[16px] border-r-transparent border-t-[16px] border-t-white"></div>
+            </div>
+
+            {/* Challengee bubble (right side) */}
+            <div className="flex items-end gap-3 justify-end mt-4">
+              <div className="bg-[#6B46C1] px-4 py-2 rounded-2xl rounded-br-md">
+                <span className="text-white font-medium">@{to}</span>
+              </div>
+              {betDetails?.challengeePfp ? (
+                <img 
+                  src={betDetails.challengeePfp} 
+                  alt={to} 
+                  className="w-12 h-12 rounded-full border-2 border-white" 
+                />
+              ) : (
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold text-lg">
+                    {to.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Pool Amount and Time Limit Circles */}
+          <div className="flex justify-center gap-8 mb-8">
+            <div className="text-center">
+              <div className="text-white text-lg font-bold mb-2">Pool Amount</div>
+              <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center">
+                <span className="text-white text-xl font-bold">${stake}</span>
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-white text-lg font-bold mb-2">Time Limit</div>
+              <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center">
+                <span className="text-white text-lg font-bold">
+                  {betState ? formatTimeRemaining(betState.deadline) : '—'}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <Card className="bg-card border-border text-card-foreground">
-          <CardHeader>
-            <CardTitle className="text-base">
-              {betDetails?.loading ? "Loading..." : "Dare"}
-              {betDetails?.error && <span className="text-red-500 text-sm ml-2">({betDetails.error})</span>}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-start justify-between">
-              <div className="text-lg font-medium">{description}</div>
-              <div className={`text-[10px] px-2 py-0.5 rounded-full uppercase ${getBetStatusColor(status)}`}>
-                {statusLabel}
+        {/* Content Area */}
+        <div className="px-6 py-6 space-y-6">
+          {/* Countdown Timer */}
+          {betState && betState.timeRemaining > 0 && status === 'OPEN' && (
+            <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-700 font-medium">Time Left to Accept</span>
+                <span className="text-[#7C3AED] text-2xl font-bold">
+                  {formatCountdown(betState.timeRemaining)}
+                </span>
               </div>
             </div>
-            <div className="text-foreground/70 text-sm">From {from} → {to}</div>
-            <div className="text-foreground font-semibold flex items-center gap-1">
-              <span>{token.icon}</span>
-              <span>{stake} {token.symbol} stake</span>
-            </div>
-            
-            {betDetails && (
-              <div className="text-xs text-foreground/60 space-y-1">
-                {betDetails.proof && (
-                  <div>Proof: {betDetails.proof}</div>
-                )}
-                <div>Created: {betDetails.createdAt.toLocaleDateString()}</div>
-                {!betDetails.isClosed && (
-                  <div>Deadline: {betDetails.acceptanceDeadline.toLocaleDateString()}</div>
-                )}
-              </div>
-            )}
+          )}
 
-            <div className="pt-2 flex gap-3">
-              {status === 'OPEN' && (
-                <>
-                  <Button onClick={accept} disabled={isSubmitting || isApproving || !isConnected || !id}>
-                    {isApproving ? `Approving ${token.symbol}...` : isSubmitting ? "Processing..." : "Accept"}
-                  </Button>
-                  <Button variant="outline" onClick={reject} disabled={isSubmitting || isApproving || !isConnected || !id}>
-                    {isSubmitting ? "Processing..." : "Reject"}
-                  </Button>
-                </>
-              )}
-              {(status === 'ACCEPTED' || status === 'PROOF_SUBMITTED') && (
-                <>
-                  <Button variant="outline" onClick={() => {
-                    router.push(`/dare/${id}/proof`)
-                  }}>Submit Proof</Button>
-                  <Button variant="outline" onClick={() => {
-                    router.push(`/dare/${id}/review`)
-                  }}>Review Proof</Button>
-                </>
-              )}
+          {/* Accept/Reject Buttons */}
+          {status === 'OPEN' && (
+            <div className="flex gap-4">
+              <button 
+                onClick={accept} 
+                disabled={isSubmitting || isApproving || !isConnected || !id}
+                className="flex-1 bg-green-500 text-white py-4 rounded-2xl font-bold text-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isApproving ? `Approving ${token.symbol}...` : isSubmitting ? "Processing..." : "Accept Bet"}
+              </button>
+              <button 
+                onClick={reject} 
+                disabled={isSubmitting || isApproving || !isConnected || !id}
+                className="flex-1 border-2 border-red-500 text-red-500 py-4 rounded-2xl font-bold text-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Processing..." : "Reject Bet"}
+              </button>
             </div>
-          </CardContent>
-        </Card>
+          )}
+
+          {/* Other Status Actions */}
+          {(status === 'ACCEPTED' || status === 'PROOF_SUBMITTED') && (
+            <div className="flex gap-4">
+              <button 
+                onClick={() => router.push(`/dare/${id}/proof`)}
+                className="flex-1 bg-[#7C3AED] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[#6B46C1] transition-colors"
+              >
+                Submit Proof
+              </button>
+              <button 
+                onClick={() => router.push(`/dare/${id}/review`)}
+                className="flex-1 border-2 border-[#7C3AED] text-[#7C3AED] py-4 rounded-2xl font-bold text-lg hover:bg-purple-50 transition-colors"
+              >
+                Review Proof
+              </button>
+            </div>
+          )}
+
+          {/* Status and Error Display */}
+          {betDetails?.error && (
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
+              <span className="text-red-600 text-sm">{betDetails.error}</span>
+            </div>
+          )}
+
+          {isLoading && (
+            <div className="text-center py-8">
+              <div className="text-gray-600">Loading bet details...</div>
+            </div>
+          )}
+        </div>
       </div>
     </main>
   )
