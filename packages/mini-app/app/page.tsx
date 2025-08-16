@@ -1,14 +1,10 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Rocket, Trophy, Zap, Clock, CheckCircle, Bell } from "lucide-react"
-import { SignInButton } from "@farcaster/auth-kit"
+import { Bell } from "lucide-react"
 import { useAppState } from "@/components/AppStateProvider"
 import { useUserBets } from "@/hooks/useUserBets"
-import { getBetStatusColor } from "@/lib/indexer"
 import { managedToast } from "@/lib/toast"
 import { getCurrentState, formatTimeRemaining, getTimeStatusColor } from "@/lib/betState"
 import { useBettingHouse } from "@/hooks/useBettingHouse"
@@ -136,12 +132,51 @@ const BetCard = ({ bet, onClick, onAccept, onReject, isSubmitting, isApproving }
   )
 }
 
+const LOADING_STATES = [
+  { emoji: '🎲', title: 'Rolling the dice...', subtitle: 'Finding your epic bets' },
+  { emoji: '🎯', title: 'Taking aim...', subtitle: 'Targeting your challenges' },
+  { emoji: '🚀', title: 'Launching into orbit...', subtitle: 'Fetching your dares' },
+  { emoji: '⚡', title: 'Charging up...', subtitle: 'Powering your bets' },
+  { emoji: '🎪', title: 'Setting up the ring...', subtitle: 'Preparing your matches' },
+  { emoji: '🎮', title: 'Loading game...', subtitle: 'Your challenges await' },
+  { emoji: '🔥', title: 'Heating things up...', subtitle: 'Your hot bets incoming' },
+  { emoji: '🎊', title: 'Party time...', subtitle: 'Celebrating your bets' }
+]
+
+const LoadingSkeleton = () => (
+  <div className="space-y-4">
+    {[1, 2].map((i) => (
+      <div key={i} className="bg-white rounded-3xl border-4 border-gray-200 p-6 shadow-lg animate-pulse">
+        <div className="flex items-start gap-4 mb-4">
+          <div className="bg-gray-300 px-4 py-3 rounded-2xl w-20 h-12"></div>
+          <div className="flex-1">
+            <div className="h-6 bg-gray-300 rounded mb-2 w-3/4"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          </div>
+        </div>
+        <div className="flex gap-3 mb-4">
+          <div className="flex-1 bg-gray-300 py-3 rounded-2xl h-12"></div>
+          <div className="flex-1 bg-gray-200 py-3 rounded-2xl h-12"></div>
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
+            <div className="h-4 bg-gray-300 rounded w-24"></div>
+          </div>
+          <div className="h-4 bg-gray-200 rounded w-16"></div>
+        </div>
+      </div>
+    ))}
+  </div>
+)
+
 export default function Page() {
   const router = useRouter()
   const { activeAddress, isWalletConnected, isAuthenticated } = useAppState()
   const { isConnected: isWalletActive } = useAccount()
   const { acceptBet, rejectBet, isSubmitting, isApproving } = useBettingHouse()
   const lastBetsError = useRef<string | null>(null)
+  const [loadingState] = useState(() => LOADING_STATES[Math.floor(Math.random() * LOADING_STATES.length)])
 
   // Consider user "connected" if they have either a wallet connection or are authenticated with Farcaster
   const isConnected = isWalletConnected || (isAuthenticated && !!activeAddress)
@@ -259,8 +294,31 @@ export default function Page() {
           {activeAddress && (
             <div className="space-y-4">
               {loading && (
-                <div className="text-center py-8">
-                  <div className="text-lg text-gray-600">Loading your bets...</div>
+                <div className="space-y-6">
+                  <div className="text-center py-8">
+                    <div className="relative mb-6">
+                      <div className="text-6xl animate-bounce">{loadingState.emoji}</div>
+                      <div className="absolute -top-2 -right-2 text-2xl animate-spin">⭐</div>
+                      <div className="absolute -bottom-1 -left-2 text-xl animate-pulse">✨</div>
+                    </div>
+                    <div className="text-xl font-bold text-gray-800 mb-2">{loadingState.title}</div>
+                    <div className="text-gray-600 mb-6">{loadingState.subtitle}</div>
+                    
+                    {/* Animated loading dots */}
+                    <div className="flex justify-center space-x-2 mb-4">
+                      <div className="w-3 h-3 bg-[#7C3AED] rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+                      <div className="w-3 h-3 bg-[#7C3AED] rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+                      <div className="w-3 h-3 bg-[#7C3AED] rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+                    </div>
+                    
+                    {/* Fun progress bar */}
+                    <div className="w-48 h-2 bg-gray-200 rounded-full mx-auto overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-[#7C3AED] to-[#A855F7] rounded-full animate-pulse"></div>
+                    </div>
+                  </div>
+                  
+                  {/* Loading skeleton cards */}
+                  <LoadingSkeleton />
                 </div>
               )}
 
