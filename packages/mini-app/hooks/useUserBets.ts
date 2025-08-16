@@ -21,6 +21,8 @@ export interface UserBetSummary {
   createdAt: Date;
   acceptanceDeadline: Date;
   proofSubmissionDeadline: Date;
+  proofAcceptanceDeadline: Date;
+  mediationDeadline?: Date;
   // Farcaster user data
   challengerFid?: number;
   challengerUsername?: string;
@@ -95,6 +97,8 @@ export function useUserBets(options: UseUserBetsOptions = {}) {
           createdAt: new Date(parseInt(bet.createdTimestamp, 10)),
           acceptanceDeadline: new Date(parseInt(bet.acceptanceDeadline, 10)),
           proofSubmissionDeadline: new Date(parseInt(bet.proofSubmissionDeadline, 10)),
+          proofAcceptanceDeadline: new Date(parseInt(bet.proofAcceptanceDeadline, 10)),
+          mediationDeadline: bet.mediationDeadline ? new Date(parseInt(bet.mediationDeadline, 10)) : undefined,
           // Farcaster user data
           challengerFid: bet.challengerFid,
           challengerUsername: bet.challengerUsername,

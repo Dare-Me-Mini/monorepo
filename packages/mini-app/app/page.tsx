@@ -10,6 +10,7 @@ import { useAppState } from "@/components/AppStateProvider"
 import { useUserBets } from "@/hooks/useUserBets"
 import { getBetStatusColor } from "@/lib/indexer"
 import { managedToast } from "@/lib/toast"
+import { getCurrentState, formatTimeRemaining, getTimeStatusColor } from "@/lib/betState"
 import toast from "react-hot-toast"
 
 const BrandHeader = () => {
@@ -48,6 +49,19 @@ const BetCard = ({ bet, onClick, showActions = false }: { bet: any; onClick: () 
   const displayName = bet.isChallenger ? challengeeName : challengerName
   const displayPfp = bet.isChallenger ? bet.challengeePfp : bet.challengerPfp
   
+  // Calculate current state and time remaining
+  const betState = getCurrentState({
+    lastUpdatedStatus: bet.status,
+    acceptanceDeadline: bet.acceptanceDeadline,
+    proofSubmissionDeadline: bet.proofSubmissionDeadline,
+    proofAcceptanceDeadline: bet.proofAcceptanceDeadline,
+    mediationDeadline: bet.mediationDeadline,
+    isClosed: bet.isClosed
+  })
+  
+  const timeDisplay = betState.deadline > 0 ? formatTimeRemaining(betState.timeRemaining) : 'No deadline'
+  const timeColor = getTimeStatusColor(betState.timeRemaining, betState.deadline)
+  
   return (
     <div className="bg-white rounded-3xl border-4 border-black p-6 shadow-lg cursor-pointer hover:shadow-xl transition-shadow" onClick={onClick}>
       <div className="flex items-start gap-4 mb-4">
@@ -61,7 +75,7 @@ const BetCard = ({ bet, onClick, showActions = false }: { bet: any; onClick: () 
         </div>
       </div>
       
-      {showActions && bet.status === 'OPEN' && !bet.isChallenger && (
+      {showActions && betState.currentStatus === 'OPEN' && !bet.isChallenger && (
         <div className="flex gap-3 mb-4">
           <button className="flex-1 bg-green-500 text-white py-3 rounded-2xl font-bold hover:bg-green-600 transition-colors text-lg">
             Accept Bet
@@ -87,9 +101,11 @@ const BetCard = ({ bet, onClick, showActions = false }: { bet: any; onClick: () 
             {displayName}
           </span>
         </div>
-        <div className="flex items-center gap-1 text-green-600">
-          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-          <span className="text-sm font-medium">24 Hours</span>
+        <div className="flex items-center gap-1">
+          <div className={`w-2 h-2 rounded-full ${betState.timeRemaining > 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <span className={`text-sm font-medium ${timeColor}`}>
+            {timeDisplay}
+          </span>
         </div>
       </div>
     </div>
