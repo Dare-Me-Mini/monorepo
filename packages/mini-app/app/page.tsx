@@ -2,7 +2,23 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Bell, RefreshCw } from "lucide-react"
+import {
+  Bell,
+  RefreshCw,
+  Rocket,
+  Zap,
+  Dice5,
+  Target,
+  Tent,
+  Gamepad2,
+  Flame,
+  PartyPopper,
+  Star,
+  Sparkles,
+  Link,
+  Clock,
+  MoreVertical,
+} from "lucide-react"
 import { useAppState } from "@/components/AppStateProvider"
 import { useUserBets } from "@/hooks/useUserBets"
 import { managedToast } from "@/lib/toast"
@@ -26,8 +42,8 @@ const BrandHeader = () => {
         </div>
       </div>
       <div className="text-center">
-        <div className="text-4xl font-bold mb-2">
-          Bet 🚀 & ⚡ Compete
+        <div className="text-4xl font-bold mb-2 flex items-center justify-center gap-2">
+          Bet <Rocket className="w-8 h-8 inline-block" /> & <Zap className="w-8 h-8 inline-block" /> Compete
         </div>
       </div>
     </div>
@@ -66,66 +82,69 @@ const BetCard = ({ bet, onClick, onAccept, onReject, isSubmitting, isApproving }
   const timeColor = getTimeStatusColor(betState.timeRemaining, betState.deadline)
   
   return (
-    <div className="bg-white rounded-3xl border-4 border-black p-6 shadow-lg">
-      {/* Bet content */}
-      <div className="flex items-start gap-4 mb-4" onClick={onClick} style={{cursor: 'pointer'}}>
-        <div className="bg-[#7C3AED] text-white px-4 py-3 rounded-2xl font-bold text-2xl">
+    <div
+      className="bg-white rounded-2xl border-2 border-black p-4 shadow-[4px_4px_0px_#000] cursor-pointer"
+      onClick={onClick}
+    >
+      <div className="flex items-start gap-3 mb-4 bg-purple-100 p-3 rounded-xl">
+        <div className="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold text-xl flex-shrink-0">
           ${bet.amount}
         </div>
         <div className="flex-1">
-          <p className="text-gray-800 font-medium text-lg">
+          <p className="text-gray-800 font-medium text-sm leading-snug">
             {bet.condition}
           </p>
         </div>
       </div>
-      
-      {/* Accept/Reject buttons for OPEN bets */}
+
       {betState.currentStatus === 'OPEN' && !bet.isChallenger && (
         <div className="flex gap-3 mb-4">
-          <button 
+          <button
             onClick={(e) => {
               e.stopPropagation();
               onAccept?.();
             }}
             disabled={isSubmitting || isApproving}
-            className="flex-1 bg-green-500 text-white py-3 rounded-2xl font-bold hover:bg-green-600 transition-colors text-lg disabled:opacity-50"
+            className="flex-1 bg-[#00C96F] text-white py-2.5 rounded-xl font-bold hover:bg-green-600 transition-colors text-base disabled:opacity-50 border-b-4 border-green-700 active:border-b-0"
           >
             {isApproving ? 'Approving...' : isSubmitting ? 'Processing...' : 'Accept Bet'}
           </button>
-          <button 
+          <button
             onClick={(e) => {
               e.stopPropagation();
               onReject?.();
             }}
             disabled={isSubmitting || isApproving}
-            className="flex-1 border-2 border-red-500 text-red-500 py-3 rounded-2xl font-bold hover:bg-red-50 transition-colors text-lg disabled:opacity-50"
+            className="flex-1 border-2 border-red-500 text-red-500 py-2.5 rounded-xl font-bold hover:bg-red-50 transition-colors text-base disabled:opacity-50 bg-white"
           >
             {isSubmitting ? 'Processing...' : 'Reject Bet'}
           </button>
         </div>
       )}
-      
-      {/* User info and time */}
-      <div className="flex items-center justify-between" onClick={onClick} style={{cursor: 'pointer'}}>
-        <div className="flex items-center gap-3">
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
           {displayPfp ? (
-            <img src={displayPfp} alt={displayName} className="w-10 h-10 rounded-full" />
+            <img src={displayPfp} alt={displayName} className="w-8 h-8 rounded-full border-2 border-black" />
           ) : (
-            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center border-2 border-black">
               <span className="text-gray-500 text-xs font-medium">
                 {displayName.charAt(0).toUpperCase()}
               </span>
             </div>
           )}
-          <span className="font-medium text-gray-700 text-base">
+          <span className="font-semibold text-gray-900 text-sm">
             {displayName}
           </span>
         </div>
-        <div className="flex items-center gap-1">
-          <div className={`w-2 h-2 rounded-full ${betState.timeRemaining > 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
-          <span className={`text-sm font-medium ${timeColor}`}>
-            {timeDisplay}
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 text-[#00C96F]">
+            <Clock className="w-4 h-4" />
+            <span className={`text-sm font-medium`}>
+              {timeDisplay}
+            </span>
+          </div>
+          <MoreVertical className="w-5 h-5 text-gray-500" />
         </div>
       </div>
     </div>
@@ -133,14 +152,14 @@ const BetCard = ({ bet, onClick, onAccept, onReject, isSubmitting, isApproving }
 }
 
 const LOADING_STATES = [
-  { emoji: '🎲', title: 'Rolling the dice...', subtitle: 'Finding your epic bets' },
-  { emoji: '🎯', title: 'Taking aim...', subtitle: 'Targeting your challenges' },
-  { emoji: '🚀', title: 'Launching into orbit...', subtitle: 'Fetching your dares' },
-  { emoji: '⚡', title: 'Charging up...', subtitle: 'Powering your bets' },
-  { emoji: '🎪', title: 'Setting up the ring...', subtitle: 'Preparing your matches' },
-  { emoji: '🎮', title: 'Loading game...', subtitle: 'Your challenges await' },
-  { emoji: '🔥', title: 'Heating things up...', subtitle: 'Your hot bets incoming' },
-  { emoji: '🎊', title: 'Party time...', subtitle: 'Celebrating your bets' }
+  { icon: Dice5, title: 'Rolling the dice...', subtitle: 'Finding your epic bets' },
+  { icon: Target, title: 'Taking aim...', subtitle: 'Targeting your challenges' },
+  { icon: Rocket, title: 'Launching into orbit...', subtitle: 'Fetching your dares' },
+  { icon: Zap, title: 'Charging up...', subtitle: 'Powering your bets' },
+  { icon: Tent, title: 'Setting up the ring...', subtitle: 'Preparing your matches' },
+  { icon: Gamepad2, title: 'Loading game...', subtitle: 'Your challenges await' },
+  { icon: Flame, title: 'Heating things up...', subtitle: 'Your hot bets incoming' },
+  { icon: PartyPopper, title: 'Party time...', subtitle: 'Celebrating your bets' }
 ]
 
 const LoadingSkeleton = () => (
@@ -177,6 +196,7 @@ export default function Page() {
   const { acceptBet, rejectBet, isSubmitting, isApproving } = useBettingHouse()
   const lastBetsError = useRef<string | null>(null)
   const [loadingState] = useState(() => LOADING_STATES[Math.floor(Math.random() * LOADING_STATES.length)])
+  const LoadingIcon = loadingState.icon
 
   // Consider user "connected" if they have either a wallet connection or are authenticated with Farcaster
   const isConnected = isWalletConnected || (isAuthenticated && !!activeAddress)
@@ -314,10 +334,10 @@ export default function Page() {
               {loading && (
                 <div className="space-y-6">
                   <div className="text-center py-8">
-                    <div className="relative mb-6">
-                      <div className="text-6xl animate-bounce">{loadingState.emoji}</div>
-                      <div className="absolute -top-2 -right-2 text-2xl animate-spin">⭐</div>
-                      <div className="absolute -bottom-1 -left-2 text-xl animate-pulse">✨</div>
+                    <div className="relative mb-6 flex justify-center items-center h-20">
+                      <LoadingIcon className="w-16 h-16 text-[#7C3AED] animate-bounce" />
+                      <Star className="absolute top-0 right-0 w-6 h-6 text-yellow-400 animate-spin" />
+                      <Sparkles className="absolute bottom-0 left-0 w-5 h-5 text-blue-400 animate-pulse" />
                     </div>
                     <div className="text-xl font-bold text-gray-800 mb-2">{loadingState.title}</div>
                     <div className="text-gray-600 mb-6">{loadingState.subtitle}</div>
@@ -348,7 +368,7 @@ export default function Page() {
 
               {!loading && bets.length === 0 && !betsError && (
                 <div className="text-center py-12">
-                  <div className="text-6xl mb-4">🎯</div>
+                  <Target className="w-16 h-16 mx-auto mb-4 text-gray-400" />
                   <div className="text-xl font-semibold text-gray-800 mb-2">No bets yet</div>
                   <div className="text-gray-600">Create your first bet to get started!</div>
                 </div>
@@ -373,10 +393,10 @@ export default function Page() {
                   {isRefreshing && activeBets.length === 0 && (
                     <div className="space-y-6">
                       <div className="text-center py-8">
-                        <div className="relative mb-6">
-                          <div className="text-6xl animate-bounce">{loadingState.emoji}</div>
-                          <div className="absolute -top-2 -right-2 text-2xl animate-spin">⭐</div>
-                          <div className="absolute -bottom-1 -left-2 text-xl animate-pulse">✨</div>
+                        <div className="relative mb-6 flex justify-center items-center h-20">
+                          <LoadingIcon className="w-16 h-16 text-[#7C3AED] animate-bounce" />
+                          <Star className="absolute top-0 right-0 w-6 h-6 text-yellow-400 animate-spin" />
+                          <Sparkles className="absolute bottom-0 left-0 w-5 h-5 text-blue-400 animate-pulse" />
                         </div>
                         <div className="text-xl font-bold text-gray-800 mb-2">{loadingState.title}</div>
                         <div className="text-gray-600 mb-6">{loadingState.subtitle}</div>
@@ -444,9 +464,9 @@ export default function Page() {
           )}
 
           {!activeAddress && (
-            <div className="text-center py-8 text-foreground/60">
-              <div className="text-4xl mb-2">🔗</div>
-              <div>Connect your wallet to view your bets</div>
+              <div className="text-center py-8 text-foreground/60">
+                <div className="text-4xl mb-2"><Link className="w-10 h-10 mx-auto mb-2 text-foreground" /></div>
+                <div>Connect your wallet to view your bets</div>
             </div>
           )}
         </div>
