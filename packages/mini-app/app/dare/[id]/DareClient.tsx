@@ -49,34 +49,6 @@ export default function DareClient({ id }: { id: string }) {
   // Check if current user is the challenger
   const isChallenger = hasEssentialData && activeAddress && 
     betDetails.challenger.toLowerCase() === activeAddress.toLowerCase()
-  
-  // Get status and pending information
-  const statusLabel = hasEssentialData ? getBetStatusLabel(betState?.currentStatus || status) : ''
-  const statusColorClass = hasEssentialData ? getBetStatusColor(betState?.currentStatus || status) : ''
-  
-  // Determine what's pending and from whose perspective
-  const getPendingInfo = () => {
-    if (!hasEssentialData || !betState) return null
-    
-    if (betState.currentStatus === 'OPEN') {
-      if (isChallengee) return 'Your turn to accept or reject'
-      if (isChallenger) return 'Waiting for challengee to respond'
-      return 'Waiting for challengee to respond'
-    } else if (betState.currentStatus === 'ACCEPTED') {
-      if (isChallenger) return 'Your turn to submit proof'
-      if (isChallengee) return 'Waiting for challenger to submit proof'
-      return 'Waiting for proof submission'
-    } else if (betState.currentStatus === 'PROOF_SUBMITTED') {
-      if (isChallengee) return 'Your turn to review proof'
-      if (isChallenger) return 'Waiting for proof review'
-      return 'Waiting for proof review'
-    } else if (betState.currentStatus === 'PROOF_DISPUTED') {
-      return 'Awaiting mediation'
-    }
-    return null
-  }
-  
-  const pendingInfo = getPendingInfo()
 
   useEffect(() => {
     ;(async () => {
@@ -164,6 +136,34 @@ export default function DareClient({ id }: { id: string }) {
       isClosed: betDetails.isClosed
     });
   }, [betDetails, currentTime]) // Recalculate when currentTime changes
+
+  // Get status and pending information (after betState is defined)
+  const statusLabel = hasEssentialData ? getBetStatusLabel(betState?.currentStatus || status) : ''
+  const statusColorClass = hasEssentialData ? getBetStatusColor(betState?.currentStatus || status) : ''
+  
+  // Determine what's pending and from whose perspective
+  const getPendingInfo = () => {
+    if (!hasEssentialData || !betState) return null
+    
+    if (betState.currentStatus === 'OPEN') {
+      if (isChallengee) return 'Your turn to accept or reject'
+      if (isChallenger) return 'Waiting for challengee to respond'
+      return 'Waiting for challengee to respond'
+    } else if (betState.currentStatus === 'ACCEPTED') {
+      if (isChallenger) return 'Your turn to submit proof'
+      if (isChallengee) return 'Waiting for challenger to submit proof'
+      return 'Waiting for proof submission'
+    } else if (betState.currentStatus === 'PROOF_SUBMITTED') {
+      if (isChallengee) return 'Your turn to review proof'
+      if (isChallenger) return 'Waiting for proof review'
+      return 'Waiting for proof review'
+    } else if (betState.currentStatus === 'PROOF_DISPUTED') {
+      return 'Awaiting mediation'
+    }
+    return null
+  }
+  
+  const pendingInfo = getPendingInfo()
 
   const formatCountdown = (timeRemaining: number) => {
     if (timeRemaining <= 0) return "00:00:00"
