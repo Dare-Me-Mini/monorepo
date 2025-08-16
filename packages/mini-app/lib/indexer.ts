@@ -15,6 +15,13 @@ export interface IndexerBet {
   lastUpdatedStatus: BetStatus;
   token: string;
   isClosed: boolean;
+  // Farcaster user data
+  challengerFid?: number;
+  challengerUsername?: string;
+  challengerPfp?: string;
+  challengeeFid?: number;
+  challengeeUsername?: string;
+  challengeePfp?: string;
   createdTxHash: string;
   createdBlockNumber: string;
   createdTimestamp: string;
@@ -89,12 +96,59 @@ class IndexerClient {
 
   async getBet(id: string | number): Promise<IndexerBet | null> {
     try {
-      const response = await fetch(`${this.baseUrl}/bets/${id}`);
+      const query = `
+        query GetBet($id: String!) {
+          bet(id: $id) {
+            id
+            challenger
+            challengee
+            mediator
+            condition
+            amount
+            amountAfterFees
+            acceptanceDeadline
+            proofSubmissionDeadline
+            proofAcceptanceDeadline
+            mediationDeadline
+            proof
+            lastUpdatedStatus
+            token
+            isClosed
+            challengerFid
+            challengerUsername
+            challengerPfp
+            challengeeFid
+            challengeeUsername
+            challengeePfp
+            createdTxHash
+            createdBlockNumber
+            createdTimestamp
+            updatedAt
+          }
+        }
+      `;
+
+      const response = await fetch(`${this.baseUrl}/graphql`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          variables: { id: id.toString() },
+        }),
+      });
+
       if (!response.ok) {
-        if (response.status === 404) return null;
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      return await response.json();
+
+      const result = await response.json();
+      if (result.errors) {
+        throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
+      }
+
+      return result.data.bet;
     } catch (error) {
       console.error('Failed to fetch bet:', error);
       throw error;
@@ -129,6 +183,12 @@ class IndexerClient {
               lastUpdatedStatus
               token
               isClosed
+              challengerFid
+              challengerUsername
+              challengerPfp
+              challengeeFid
+              challengeeUsername
+              challengeePfp
               createdTxHash
               createdBlockNumber
               createdTimestamp

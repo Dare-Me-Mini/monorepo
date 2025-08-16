@@ -36,6 +36,13 @@ export const bet = onchainTable("bet", (t) => ({
     .notNull(),
   token: t.hex().notNull(),
   isClosed: t.boolean().notNull().default(false),
+  // Farcaster user data
+  challengerFid: t.integer(),
+  challengerUsername: t.text(),
+  challengerPfp: t.text(),
+  challengeeFid: t.integer(),
+  challengeeUsername: t.text(),
+  challengeePfp: t.text(),
   createdTxHash: t.hex().notNull(),
   createdBlockNumber: t.bigint().notNull(),
   createdTimestamp: t.timestamp().notNull(),
