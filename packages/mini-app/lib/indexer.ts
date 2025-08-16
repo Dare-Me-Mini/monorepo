@@ -100,7 +100,7 @@ class IndexerClient {
   async getBet(id: string | number): Promise<IndexerBet | null> {
     try {
       const query = `
-        query GetBet($id: String!) {
+        query GetBet($id: BigInt!) {
           bet(id: $id) {
             id
             challenger
