@@ -89,11 +89,11 @@ const BetCard = ({ bet, onClick, onAccept, onReject, isSubmitting, isApproving }
   // Determine whose turn it is / what's pending
   const getPendingInfo = () => {
     if (betState.currentStatus === 'OPEN') {
-      return bet.isChallenger ? 'Waiting for acceptance' : 'Your turn to respond'
+      return bet.isChallengee ? 'Your turn to respond' : 'Waiting for acceptance'
     } else if (betState.currentStatus === 'ACCEPTED') {
-      return bet.isChallenger ? 'Your turn to submit proof' : 'Waiting for proof'
+      return bet.isChallengee ? 'Your turn to submit proof' : 'Waiting for proof'
     } else if (betState.currentStatus === 'PROOF_SUBMITTED') {
-      return bet.isChallenger ? 'Waiting for proof review' : 'Your turn to review proof'
+      return bet.isChallengee ? 'Waiting for proof review' : 'Your turn to review proof'
     } else if (betState.currentStatus === 'PROOF_DISPUTED') {
       return 'Awaiting mediation'
     }

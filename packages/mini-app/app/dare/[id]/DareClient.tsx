@@ -157,15 +157,12 @@ export default function DareClient({ id }: { id: string }) {
     
     if (betState.currentStatus === 'OPEN') {
       if (isChallengee) return 'Your turn to accept or reject'
-      if (isChallenger) return 'Waiting for challengee to respond'
       return 'Waiting for challengee to respond'
     } else if (betState.currentStatus === 'ACCEPTED') {
-      if (isChallenger) return 'Your turn to submit proof'
-      if (isChallengee) return 'Waiting for challenger to submit proof'
-      return 'Waiting for proof submission'
+      if (isChallengee) return 'Your turn to submit proof'
+      return 'Waiting for challenger to submit proof'
     } else if (betState.currentStatus === 'PROOF_SUBMITTED') {
-      if (isChallengee) return 'Your turn to review proof'
-      if (isChallenger) return 'Waiting for proof review'
+      if (isChallenger) return 'Your turn to review proof'
       return 'Waiting for proof review'
     } else if (betState.currentStatus === 'PROOF_DISPUTED') {
       return 'Awaiting mediation'
@@ -181,7 +178,7 @@ export default function DareClient({ id }: { id: string }) {
     
     if (betState.currentStatus === 'OPEN') {
       // Show total time from bet creation to acceptance deadline
-      const createdTime = new Date(parseInt(betDetails.createdTimestamp, 10)).getTime()
+      const createdTime = betDetails.createdAt.getTime()
       const acceptanceTime = betDetails.acceptanceDeadline.getTime()
       const totalDuration = acceptanceTime - createdTime
       return formatTimeRemaining(totalDuration)
