@@ -18,10 +18,12 @@ export const validatePublicEnv = () => {
 
 const serverEnvSchema = z.object({
     neynarApiKey: z.string(),
+    geminiApiKey: z.string(),
 });
 
 export const validateServerEnv = () => {
     return serverEnvSchema.parse({
         neynarApiKey: process.env.NEYNAR_API_KEY,
+        geminiApiKey: process.env.GEMINI_API_KEY,
     });
 }

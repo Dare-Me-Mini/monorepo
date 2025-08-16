@@ -10,11 +10,16 @@ import { useAppState } from "@/components/AppStateProvider"
 import toast from "react-hot-toast"
 import { extractBetIdFromTxHash, formatBetCondition, calculateDeadline } from "@/lib/betUtils"
 import { getTokenList, getTokenBySymbol, DEFAULT_TOKEN, type Token } from "@/lib/tokens"
+import { SuggestionModal } from "@/components/SuggestionModal"
+import { UsernameSearchDropdown } from "@/components/UsernameSearchDropdown"
+import type { FarcasterUser } from "@/hooks/useUsernameSearch"
+import { useNotifyFriend } from "@/hooks/useNotifyFriend"
 
 export default function CreatePage() {
   const router = useRouter()
-  const { isWalletConnected, isAuthenticated, activeAddress } = useAppState()
+  const { isWalletConnected, isAuthenticated, activeAddress, profile } = useAppState()
   const { createBet, isSubmitting, isApproving } = useBettingHouse()
+  const { notifyFriend, isLoading: isNotifying } = useNotifyFriend()
 
   // Consider user "connected" if they have either a wallet connection or are authenticated with Farcaster
   const isConnected = isWalletConnected || (isAuthenticated && !!activeAddress)
@@ -27,10 +32,28 @@ export default function CreatePage() {
   const [time, setTime] = useState<string>("")
   const [selectedToken, setSelectedToken] = useState<Token>(DEFAULT_TOKEN)
   const [creating, setCreating] = useState(false)
-  const [friendLookupLoading, setFriendLookupLoading] = useState(false)
   const [friendLookupError, setFriendLookupError] = useState<string | null>(null)
   const [friendVerifiedAddress, setFriendVerifiedAddress] = useState<string | null>(null)
   const [friendCustodyAddress, setFriendCustodyAddress] = useState<string | null>(null)
+
+  // AI Suggestion states
+  const [showBetNameSuggestions, setShowBetNameSuggestions] = useState(false)
+  const [showDescriptionSuggestions, setShowDescriptionSuggestions] = useState(false)
+
+  // Selected user data
+  const [selectedUser, setSelectedUser] = useState<FarcasterUser | null>(null)
+
+  // Handle user selection from dropdown
+  const handleUserSelect = (user: FarcasterUser) => {
+    setSelectedUser(user)
+    setFriendVerifiedAddress(user.verifiedAddress || null)
+    setFriendCustodyAddress(user.custodyAddress)
+    setFriendLookupError(null)
+
+    if (!user.verifiedAddress) {
+      setFriendLookupError("User has not set up a Farcaster wallet")
+    }
+  }
 
   // Redirect if wallet is not connected
   useEffect(() => {
@@ -56,54 +79,7 @@ export default function CreatePage() {
     )
   }
 
-  useEffect(() => {
-    const controller = new AbortController()
-    const username = friend.trim()
-    if (!username) {
-      setFriendLookupLoading(false)
-      setFriendLookupError(null)
-      setFriendVerifiedAddress(null)
-      setFriendCustodyAddress(null)
-      return
-    }
 
-    const t = setTimeout(async () => {
-      try {
-        setFriendLookupLoading(true)
-        setFriendLookupError(null)
-        const res = await fetch(`/api/neynar/wallet?username=${encodeURIComponent(username)}`, {
-          signal: controller.signal,
-        })
-        if (!res.ok) {
-          const j = await res.json().catch(() => ({}))
-          throw new Error(j?.error || `Lookup failed (${res.status})`)
-        }
-        const data = await res.json()
-        setFriendVerifiedAddress(data.walletAddress || null)
-        setFriendCustodyAddress(data.custodyAddress || null)
-        if (data.walletAddress) {
-          toast.success(`Found wallet for ${username}`)
-        } else {
-          toast.error(`${username} doesn't have a verified wallet`)
-        }
-      } catch (e: any) {
-        if (e?.name !== 'AbortError') {
-          const errorMessage = e?.message || 'Failed to lookup user'
-          setFriendLookupError(errorMessage)
-          setFriendVerifiedAddress(null)
-          setFriendCustodyAddress(null)
-          toast.error(errorMessage)
-        }
-      } finally {
-        setFriendLookupLoading(false)
-      }
-    }, 400)
-
-    return () => {
-      controller.abort()
-      clearTimeout(t)
-    }
-  }, [friend])
 
   const onCreate = async () => {
     if (!betName.trim() || !friend.trim() || !Number.isFinite(Number(amount))) {
@@ -140,6 +116,28 @@ export default function CreatePage() {
         const betId = await extractBetIdFromTxHash(result.hash);
 
         if (betId !== null) {
+          // Send notification to friend if we have their FID
+          if (selectedUser?.fid) {
+            try {
+              const currentUsername = profile?.username || 'Someone';
+              await notifyFriend({
+                friendFid: selectedUser.fid,
+                betId: betId.toString(),
+                betName,
+                challengerUsername: currentUsername,
+                amount,
+                token: selectedToken.symbol
+              });
+              toast.success("Bet created and friend notified!");
+            } catch (notifyError) {
+              console.error("Failed to notify friend:", notifyError);
+              // Don't fail the whole flow if notification fails
+              toast.success("Bet created! (Notification failed to send)");
+            }
+          } else {
+            toast.success("Bet created!");
+          }
+
           // Navigate directly to the bet share page using the actual betId
           router.push(`/dare/${betId}/share`);
         } else {
@@ -179,29 +177,50 @@ export default function CreatePage() {
         <div className="px-4 py-5 space-y-4">
           <div className="space-y-1.5">
             <div className="text-[13px] font-semibold">Bet Name</div>
-            <Input value={betName} onChange={(e) => setBetName(e.target.value)} placeholder="Jump into the Pool" className="h-11 rounded-2xl bg-white focus-visible:ring-[#6A33FF] border-transparent shadow-sm" />
+            <div className="relative">
+              <Input
+                value={betName}
+                onChange={(e) => setBetName(e.target.value)}
+                placeholder="Jump into the Pool"
+                className="h-11 pr-12 rounded-2xl bg-white focus-visible:ring-[#6A33FF] border-transparent shadow-sm"
+              />
+              <button
+                type="button"
+                onClick={() => setShowBetNameSuggestions(true)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-[#6A33FF] hover:bg-[#6A33FF]/10 rounded-lg transition-colors"
+                title="Get AI suggestions"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z" fill="currentColor"/>
+                  <path d="M19 15L20.09 18.26L24 19L20.09 19.74L19 23L17.91 19.74L14 19L17.91 18.26L19 15Z" fill="currentColor"/>
+                  <path d="M5 15L6.09 18.26L10 19L6.09 19.74L5 23L3.91 19.74L0 19L3.91 18.26L5 15Z" fill="currentColor"/>
+                </svg>
+              </button>
+            </div>
           </div>
 
           <div className="space-y-1.5">
             <div className="text-[13px] font-semibold">Add Friend to bet</div>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3">
-                <img src="https://api.dicebear.com/9.x/identicon/svg?seed=piyushxpj" alt="avatar" className="h-6 w-6 rounded-full" />
-              </div>
-              <Input value={friend} onChange={(e) => setFriend(e.target.value)} placeholder="@username" className="h-11 pl-11 rounded-2xl bg-white focus-visible:ring-[#6A33FF] border-transparent shadow-sm" />
-            </div>
+            <UsernameSearchDropdown
+              value={friend}
+              onChange={setFriend}
+              onUserSelect={handleUserSelect}
+              placeholder="@username"
+              className="focus-visible:ring-[#6A33FF] border-transparent shadow-sm"
+            />
             <div className="min-h-4 text-[11px] sm:text-xs">
-              {friendLookupLoading && (
-                <span className="text-foreground/60">Looking up wallet…</span>
+              {selectedUser && friendVerifiedAddress && (
+                <span className="text-emerald-600">
+                  ✓ {selectedUser.displayName} - Wallet: {friendVerifiedAddress.slice(0, 6)}…{friendVerifiedAddress.slice(-4)}
+                </span>
               )}
-              {!friendLookupLoading && friendLookupError && (
+              {selectedUser && !friendVerifiedAddress && (
+                <span className="text-amber-600">
+                  ⚠️ {selectedUser.displayName} has not set up a Farcaster wallet
+                </span>
+              )}
+              {friendLookupError && !selectedUser && (
                 <span className="text-red-500">{friendLookupError}</span>
-              )}
-              {!friendLookupLoading && !friendLookupError && friendVerifiedAddress && (
-                <span className="text-emerald-600">Wallet: {friendVerifiedAddress.slice(0, 6)}…{friendVerifiedAddress.slice(-4)}</span>
-              )}
-              {!friendLookupLoading && !friendLookupError && !friendVerifiedAddress && friendCustodyAddress && (
-                <span className="text-amber-600">Not eligible — friend has not set up a Farcaster wallet</span>
               )}
             </div>
           </div>
@@ -244,7 +263,26 @@ export default function CreatePage() {
 
           <div className="space-y-1.5">
             <div className="text-[13px] font-semibold">Bet Description</div>
-            <Input value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Add Description" className="h-24 rounded-2xl bg-white focus-visible:ring-[#6A33FF] border-transparent shadow-sm" />
+            <div className="relative">
+              <Input
+                value={desc}
+                onChange={(e) => setDesc(e.target.value)}
+                placeholder="Add Description"
+                className="h-24 pr-12 rounded-2xl bg-white focus-visible:ring-[#6A33FF] border-transparent shadow-sm"
+              />
+              <button
+                type="button"
+                onClick={() => setShowDescriptionSuggestions(true)}
+                className="absolute right-3 top-3 p-1.5 text-[#6A33FF] hover:bg-[#6A33FF]/10 rounded-lg transition-colors"
+                title="Get AI suggestions"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z" fill="currentColor"/>
+                  <path d="M19 15L20.09 18.26L24 19L20.09 19.74L19 23L17.91 19.74L14 19L17.91 18.26L19 15Z" fill="currentColor"/>
+                  <path d="M5 15L6.09 18.26L10 19L6.09 19.74L5 23L3.91 19.74L0 19L3.91 18.26L5 15Z" fill="currentColor"/>
+                </svg>
+              </button>
+            </div>
           </div>
 
           <div className="space-y-2.5">
@@ -269,6 +307,24 @@ export default function CreatePage() {
           </div>
         </div>
       </div>
+
+      {/* AI Suggestion Modals */}
+      <SuggestionModal
+        isOpen={showBetNameSuggestions}
+        onClose={() => setShowBetNameSuggestions(false)}
+        onSelect={(suggestion) => setBetName(suggestion)}
+        type="betName"
+        currentText={betName}
+      />
+
+      <SuggestionModal
+        isOpen={showDescriptionSuggestions}
+        onClose={() => setShowDescriptionSuggestions(false)}
+        onSelect={(suggestion) => setDesc(suggestion)}
+        type="description"
+        currentText={desc}
+        betName={betName}
+      />
     </main>
   )
 }
