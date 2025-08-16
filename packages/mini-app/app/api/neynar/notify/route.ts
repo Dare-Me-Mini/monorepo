@@ -3,6 +3,8 @@ import { NeynarAPIClient, Configuration } from "@neynar/nodejs-sdk"
 import { validateServerEnv } from "@/lib/env"
 
 export async function POST(req: NextRequest) {
+  const env = validateServerEnv();
+
   try {
     const { 
       friendFid, 
@@ -27,7 +29,6 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const env = validateServerEnv();
     const config = new Configuration({ apiKey: env.neynarApiKey })
     const client = new NeynarAPIClient(config)
 

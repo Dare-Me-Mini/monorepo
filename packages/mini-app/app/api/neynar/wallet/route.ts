@@ -5,6 +5,7 @@ import { validateServerEnv } from "@/lib/env"
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const rawUsername = (searchParams.get("username") || "").trim()
+  const env = validateServerEnv();
 
   if (!rawUsername) {
     return NextResponse.json(
@@ -18,7 +19,6 @@ export async function GET(req: NextRequest) {
     : rawUsername
 
   try {
-    const env = validateServerEnv();
     const config = new Configuration({ apiKey: env.neynarApiKey })
     const client = new NeynarAPIClient(config)
 

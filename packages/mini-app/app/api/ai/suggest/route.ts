@@ -49,6 +49,8 @@ export async function POST(request: NextRequest) {
   let requestType: 'betName' | 'description' = 'betName'
   let currentText: string = ''
   let betName: string = ''
+  const env = validateServerEnv();
+  
   try {
     const body = await request.json()
     const { type, currentText: ct, betName: bn } = body
@@ -63,7 +65,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const env = validateServerEnv()
     const genAI = new GoogleGenerativeAI(env.geminiApiKey)
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
