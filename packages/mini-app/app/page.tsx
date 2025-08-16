@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Bell } from "lucide-react"
+import { Bell, RefreshCw } from "lucide-react"
 import { useAppState } from "@/components/AppStateProvider"
 import { useUserBets } from "@/hooks/useUserBets"
 import { managedToast } from "@/lib/toast"
@@ -196,11 +196,14 @@ export default function Page() {
     activeBets,
     completedBets,
     loading,
-    error: betsError
+    error: betsError,
+    refetch
   } = useUserBets({
-    autoRefresh: !!activeAddress, // Only auto-refresh when there's an active address
-    refreshInterval: 30000
+    autoRefresh: false, // Disable auto-refresh
+    refreshInterval: 0
   })
+
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // SDK initialization is handled by MiniAppReady component
 
@@ -251,7 +254,7 @@ export default function Page() {
       if (result.success) {
         toast.success('Bet accepted successfully!')
         // Refresh the bets list
-        setTimeout(() => window.location.reload(), 2000)
+        setTimeout(() => handleRefresh(), 2000)
       } else {
         toast.error(result.error || 'Failed to accept bet')
       }
@@ -272,13 +275,28 @@ export default function Page() {
       if (result.success) {
         toast.success('Bet rejected successfully!')
         // Refresh the bets list
-        setTimeout(() => window.location.reload(), 2000)
+        setTimeout(() => handleRefresh(), 2000)
       } else {
         toast.error(result.error || 'Failed to reject bet')
       }
     } catch (error) {
       console.error('Reject bet error:', error)
       toast.error('Failed to reject bet')
+    }
+  }
+
+  const handleRefresh = async () => {
+    if (isRefreshing || !activeAddress) return
+    
+    setIsRefreshing(true)
+    try {
+      await refetch()
+      toast.success('Bets refreshed!')
+    } catch (error) {
+      console.error('Refresh error:', error)
+      toast.error('Failed to refresh bets')
+    } finally {
+      setIsRefreshing(false)
     }
   }
 
@@ -337,20 +355,67 @@ export default function Page() {
               )}
 
               {/* Active Bets */}
-              {activeBets.length > 0 && (
+              {(activeBets.length > 0 || isRefreshing) && (
                 <div className="space-y-4">
-                  <h2 className="text-2xl font-bold text-gray-800">Active Bets</h2>
-                  {activeBets.map((bet) => (
-                    <BetCard 
-                      key={bet.id} 
-                      bet={bet} 
-                      onClick={() => handleBetClick(bet)}
-                      onAccept={() => handleAcceptBet(bet)}
-                      onReject={() => handleRejectBet(bet)}
-                      isSubmitting={isSubmitting}
-                      isApproving={isApproving}
-                    />
-                  ))}
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-2xl font-bold text-gray-800">Active Bets</h2>
+                    <button 
+                      onClick={handleRefresh}
+                      disabled={isRefreshing}
+                      className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-[#7C3AED] hover:text-[#6A33FF] transition-colors disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                      {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                    </button>
+                  </div>
+                  
+                  {/* Show loading animation if refreshing AND no bets yet */}
+                  {isRefreshing && activeBets.length === 0 && (
+                    <div className="space-y-6">
+                      <div className="text-center py-8">
+                        <div className="relative mb-6">
+                          <div className="text-6xl animate-bounce">{loadingState.emoji}</div>
+                          <div className="absolute -top-2 -right-2 text-2xl animate-spin">⭐</div>
+                          <div className="absolute -bottom-1 -left-2 text-xl animate-pulse">✨</div>
+                        </div>
+                        <div className="text-xl font-bold text-gray-800 mb-2">{loadingState.title}</div>
+                        <div className="text-gray-600 mb-6">{loadingState.subtitle}</div>
+                        
+                        {/* Animated loading dots */}
+                        <div className="flex justify-center space-x-2 mb-4">
+                          <div className="w-3 h-3 bg-[#7C3AED] rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+                          <div className="w-3 h-3 bg-[#7C3AED] rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+                          <div className="w-3 h-3 bg-[#7C3AED] rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+                        </div>
+                        
+                        {/* Fun progress bar */}
+                        <div className="w-48 h-2 bg-gray-200 rounded-full mx-auto overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-[#7C3AED] to-[#A855F7] rounded-full animate-pulse"></div>
+                        </div>
+                      </div>
+                      
+                      {/* Loading skeleton cards */}
+                      <LoadingSkeleton />
+                    </div>
+                  )}
+                  
+                  {/* Show existing bets with reduced opacity during refresh */}
+                  {activeBets.length > 0 && (
+                    <div className={`space-y-4 ${isRefreshing ? 'opacity-75' : ''} transition-opacity`}>
+                      {activeBets.map((bet) => (
+                        <BetCard 
+                          key={bet.id} 
+                          bet={bet} 
+                          onClick={() => handleBetClick(bet)}
+                          onAccept={() => handleAcceptBet(bet)}
+                          onReject={() => handleRejectBet(bet)}
+                          isSubmitting={isSubmitting}
+                          isApproving={isApproving}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
                 </div>
               )}
 
