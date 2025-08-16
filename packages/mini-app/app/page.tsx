@@ -4,13 +4,15 @@ import { useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Rocket, Trophy, Zap, Clock, CheckCircle } from "lucide-react"
+import { Rocket, Trophy, Zap, Clock, CheckCircle, Bell } from "lucide-react"
 import { SignInButton } from "@farcaster/auth-kit"
 import { useAppState } from "@/components/AppStateProvider"
 import { useUserBets } from "@/hooks/useUserBets"
 import { getBetStatusColor } from "@/lib/indexer"
 import { managedToast } from "@/lib/toast"
 import { getCurrentState, formatTimeRemaining, getTimeStatusColor } from "@/lib/betState"
+import { useBettingHouse } from "@/hooks/useBettingHouse"
+import { useAccount } from "wagmi"
 import toast from "react-hot-toast"
 
 const BrandHeader = () => {
@@ -19,18 +21,16 @@ const BrandHeader = () => {
   return (
     <div className="relative overflow-hidden rounded-b-[60px] bg-[#7C3AED] text-white pt-4 pb-8 px-6">
       <div className="flex items-center justify-between mb-6">
-        <div className="text-xl font-bold">ibetyou</div>
+        <div className="text-xl font-bold">ibet</div>
         <div className="flex items-center gap-3">
-          <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
-            <div className="w-3 h-3 bg-white rounded-full"></div>
-          </div>
+          <Bell className="w-5 h-5 text-white" />
           <div className="text-sm font-medium">
             {displayAddress}
           </div>
         </div>
       </div>
       <div className="text-center">
-        <div className="text-3xl font-bold mb-2">
+        <div className="text-4xl font-bold mb-2">
           Bet 🚀 & ⚡ Compete
         </div>
       </div>
@@ -42,7 +42,14 @@ type DareStatus = "pending" | "accepted" | "rejected" | "completed"
 
 export type Dare = { id: string; description: string; stakeUsd: number; challenger: string; challengee: string; status: DareStatus; createdAt: number }
 
-const BetCard = ({ bet, onClick, showActions = false }: { bet: any; onClick: () => void; showActions?: boolean }) => {
+const BetCard = ({ bet, onClick, onAccept, onReject, isSubmitting, isApproving }: { 
+  bet: any; 
+  onClick: () => void;
+  onAccept?: () => void;
+  onReject?: () => void;
+  isSubmitting?: boolean;
+  isApproving?: boolean;
+}) => {
   // Use usernames from bet data, fallback to formatted addresses
   const challengerName = bet.challengerUsername || `${bet.challenger?.slice(0, 6)}...${bet.challenger?.slice(-4)}`
   const challengeeName = bet.challengeeUsername || `${bet.challengee?.slice(0, 6)}...${bet.challengee?.slice(-4)}`
@@ -63,8 +70,9 @@ const BetCard = ({ bet, onClick, showActions = false }: { bet: any; onClick: () 
   const timeColor = getTimeStatusColor(betState.timeRemaining, betState.deadline)
   
   return (
-    <div className="bg-white rounded-3xl border-4 border-black p-6 shadow-lg cursor-pointer hover:shadow-xl transition-shadow" onClick={onClick}>
-      <div className="flex items-start gap-4 mb-4">
+    <div className="bg-white rounded-3xl border-4 border-black p-6 shadow-lg">
+      {/* Bet content */}
+      <div className="flex items-start gap-4 mb-4" onClick={onClick} style={{cursor: 'pointer'}}>
         <div className="bg-[#7C3AED] text-white px-4 py-3 rounded-2xl font-bold text-2xl">
           ${bet.amount}
         </div>
@@ -75,18 +83,34 @@ const BetCard = ({ bet, onClick, showActions = false }: { bet: any; onClick: () 
         </div>
       </div>
       
-      {showActions && betState.currentStatus === 'OPEN' && !bet.isChallenger && (
+      {/* Accept/Reject buttons for OPEN bets */}
+      {betState.currentStatus === 'OPEN' && !bet.isChallenger && (
         <div className="flex gap-3 mb-4">
-          <button className="flex-1 bg-green-500 text-white py-3 rounded-2xl font-bold hover:bg-green-600 transition-colors text-lg">
-            Accept Bet
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onAccept?.();
+            }}
+            disabled={isSubmitting || isApproving}
+            className="flex-1 bg-green-500 text-white py-3 rounded-2xl font-bold hover:bg-green-600 transition-colors text-lg disabled:opacity-50"
+          >
+            {isApproving ? 'Approving...' : isSubmitting ? 'Processing...' : 'Accept Bet'}
           </button>
-          <button className="flex-1 border-2 border-red-500 text-red-500 py-3 rounded-2xl font-bold hover:bg-red-50 transition-colors text-lg">
-            Reject Bet
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onReject?.();
+            }}
+            disabled={isSubmitting || isApproving}
+            className="flex-1 border-2 border-red-500 text-red-500 py-3 rounded-2xl font-bold hover:bg-red-50 transition-colors text-lg disabled:opacity-50"
+          >
+            {isSubmitting ? 'Processing...' : 'Reject Bet'}
           </button>
         </div>
       )}
       
-      <div className="flex items-center justify-between">
+      {/* User info and time */}
+      <div className="flex items-center justify-between" onClick={onClick} style={{cursor: 'pointer'}}>
         <div className="flex items-center gap-3">
           {displayPfp ? (
             <img src={displayPfp} alt={displayName} className="w-10 h-10 rounded-full" />
@@ -115,6 +139,8 @@ const BetCard = ({ bet, onClick, showActions = false }: { bet: any; onClick: () 
 export default function Page() {
   const router = useRouter()
   const { activeAddress, isWalletConnected, isAuthenticated } = useAppState()
+  const { isConnected: isWalletActive } = useAccount()
+  const { acceptBet, rejectBet, isSubmitting, isApproving } = useBettingHouse()
   const lastBetsError = useRef<string | null>(null)
 
   // Consider user "connected" if they have either a wallet connection or are authenticated with Farcaster
@@ -156,7 +182,7 @@ export default function Page() {
 
   const handleCreateBetClick = () => {
     console.log('handleCreateBetClick called, isConnected:', isConnected, typeof isConnected)
-    if (!isConnected) {
+    if (!isWalletActive) {
       console.log('Connection check failed - showing toast error')
       toast.error('Please connect your wallet first to create a bet')
       return
@@ -176,6 +202,48 @@ export default function Page() {
     } catch (err) {
       console.error('Navigation failed:', err)
       managedToast.error('Failed to open bet')
+    }
+  }
+
+  const handleAcceptBet = async (bet: any) => {
+    if (!isWalletActive) {
+      toast.error('Please connect your wallet first')
+      return
+    }
+    
+    try {
+      const result = await acceptBet(Number(bet.id))
+      if (result.success) {
+        toast.success('Bet accepted successfully!')
+        // Refresh the bets list
+        setTimeout(() => window.location.reload(), 2000)
+      } else {
+        toast.error(result.error || 'Failed to accept bet')
+      }
+    } catch (error) {
+      console.error('Accept bet error:', error)
+      toast.error('Failed to accept bet')
+    }
+  }
+
+  const handleRejectBet = async (bet: any) => {
+    if (!isWalletActive) {
+      toast.error('Please connect your wallet first')
+      return
+    }
+    
+    try {
+      const result = await rejectBet(Number(bet.id))
+      if (result.success) {
+        toast.success('Bet rejected successfully!')
+        // Refresh the bets list
+        setTimeout(() => window.location.reload(), 2000)
+      } else {
+        toast.error(result.error || 'Failed to reject bet')
+      }
+    } catch (error) {
+      console.error('Reject bet error:', error)
+      toast.error('Failed to reject bet')
     }
   }
 
@@ -215,7 +283,15 @@ export default function Page() {
                 <div className="space-y-4">
                   <h2 className="text-2xl font-bold text-gray-800">Active Bets</h2>
                   {activeBets.map((bet) => (
-                    <BetCard key={bet.id} bet={bet} onClick={() => handleBetClick(bet)} showActions={true} />
+                    <BetCard 
+                      key={bet.id} 
+                      bet={bet} 
+                      onClick={() => handleBetClick(bet)}
+                      onAccept={() => handleAcceptBet(bet)}
+                      onReject={() => handleRejectBet(bet)}
+                      isSubmitting={isSubmitting}
+                      isApproving={isApproving}
+                    />
                   ))}
                 </div>
               )}
@@ -225,7 +301,15 @@ export default function Page() {
                 <div className="space-y-4">
                   <h2 className="text-2xl font-bold text-gray-800">Completed Bets</h2>
                   {completedBets.slice(0, 3).map((bet) => (
-                    <BetCard key={bet.id} bet={bet} onClick={() => handleBetClick(bet)} />
+                    <BetCard 
+                      key={bet.id} 
+                      bet={bet} 
+                      onClick={() => handleBetClick(bet)}
+                      onAccept={() => handleAcceptBet(bet)}
+                      onReject={() => handleRejectBet(bet)}
+                      isSubmitting={isSubmitting}
+                      isApproving={isApproving}
+                    />
                   ))}
                   {completedBets.length > 3 && (
                     <div className="text-center text-sm text-gray-600 mt-4">
