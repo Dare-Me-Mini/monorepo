@@ -145,6 +145,16 @@ export default function DareClient({ id }: { id: string }) {
   const getPendingInfo = () => {
     if (!hasEssentialData || !betState) return null
     
+    // Debug info
+    console.log('Debug info:', {
+      status: betState.currentStatus,
+      isChallenger,
+      isChallengee,
+      activeAddress,
+      challenger: betDetails?.challenger,
+      challengee: betDetails?.challengee
+    })
+    
     if (betState.currentStatus === 'OPEN') {
       if (isChallengee) return 'Your turn to accept or reject'
       if (isChallenger) return 'Waiting for challengee to respond'
@@ -302,7 +312,41 @@ export default function DareClient({ id }: { id: string }) {
           </div>
         </div>
 
-        {/* Content Area */}
+        {/* Countdown Timer Section - matches target design */}
+        {hasEssentialData && betState && betState.timeRemaining > 0 && status === 'OPEN' && isChallengee && (
+          <div className="bg-purple-100 mx-6 rounded-2xl p-4 shadow-sm mb-6">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-700 font-medium">Time Left to Accept</span>
+              <span className="text-[#7C3AED] text-2xl font-bold">
+                {formatCountdown(betState.timeRemaining)}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Accept/Reject Buttons - matches target design */}
+        {hasEssentialData && status === 'OPEN' && isChallengee && (
+          <div className="px-6 mb-6">
+            <div className="flex gap-4">
+              <button 
+                onClick={accept} 
+                disabled={isSubmitting || isApproving || !isConnected || !id}
+                className="flex-1 bg-green-500 text-white py-4 rounded-2xl font-bold text-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isApproving ? `Approving ${token.symbol}...` : isSubmitting ? "Processing..." : "Accept Bet"}
+              </button>
+              <button 
+                onClick={reject} 
+                disabled={isSubmitting || isApproving || !isConnected || !id}
+                className="flex-1 border-2 border-red-500 text-red-500 py-4 rounded-2xl font-bold text-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Processing..." : "Reject Bet"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Content Area for other states and information */}
         <div className="px-6 py-6 space-y-6">
           {/* Status Information */}
           {hasEssentialData && (
@@ -322,38 +366,6 @@ export default function DareClient({ id }: { id: string }) {
                   Bet #{id}
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* Countdown Timer - Only for challengee */}
-          {hasEssentialData && betState && betState.timeRemaining > 0 && status === 'OPEN' && isChallengee && (
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-700 font-medium">Time Left to Accept</span>
-                <span className="text-[#7C3AED] text-2xl font-bold">
-                  {formatCountdown(betState.timeRemaining)}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Accept/Reject Buttons - Only for challengee */}
-          {hasEssentialData && status === 'OPEN' && isChallengee && (
-            <div className="flex gap-4">
-              <button 
-                onClick={accept} 
-                disabled={isSubmitting || isApproving || !isConnected || !id}
-                className="flex-1 bg-green-500 text-white py-4 rounded-2xl font-bold text-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isApproving ? `Approving ${token.symbol}...` : isSubmitting ? "Processing..." : "Accept Bet"}
-              </button>
-              <button 
-                onClick={reject} 
-                disabled={isSubmitting || isApproving || !isConnected || !id}
-                className="flex-1 border-2 border-red-500 text-red-500 py-4 rounded-2xl font-bold text-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? "Processing..." : "Reject Bet"}
-              </button>
             </div>
           )}
 
