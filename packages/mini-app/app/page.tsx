@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Rocket, Trophy, Zap, Clock, CheckCircle, Home, Plus, User } from "lucide-react"
+import { Rocket, Trophy, Zap, Clock, CheckCircle } from "lucide-react"
 import { SignInButton } from "@farcaster/auth-kit"
 import { useAppState } from "@/components/AppStateProvider"
 import { useUserBets } from "@/hooks/useUserBets"
@@ -16,9 +16,9 @@ const BrandHeader = () => {
   const { activeAddress, isAuthenticated } = useAppState()
   const displayAddress = activeAddress ? `${activeAddress.slice(0, 6)}…${activeAddress.slice(-4)}` : (isAuthenticated ? '—' : 'Sign in')
   return (
-    <div className="relative overflow-hidden rounded-b-[60px] bg-[#7C3AED] text-white pt-8 pb-12 px-6">
-      <div className="flex items-center justify-between mb-8">
-        <div className="text-2xl font-bold">ibetyou</div>
+    <div className="relative overflow-hidden rounded-b-[60px] bg-[#7C3AED] text-white pt-4 pb-8 px-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="text-xl font-bold">ibetyou</div>
         <div className="flex items-center gap-3">
           <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
             <div className="w-3 h-3 bg-white rounded-full"></div>
@@ -29,7 +29,7 @@ const BrandHeader = () => {
         </div>
       </div>
       <div className="text-center">
-        <div className="text-4xl font-bold mb-2">
+        <div className="text-3xl font-bold mb-2">
           Bet 🚀 & ⚡ Compete
         </div>
       </div>
@@ -41,44 +41,60 @@ type DareStatus = "pending" | "accepted" | "rejected" | "completed"
 
 export type Dare = { id: string; description: string; stakeUsd: number; challenger: string; challengee: string; status: DareStatus; createdAt: number }
 
-const BetCard = ({ bet, onClick, showActions = false }: { bet: any; onClick: () => void; showActions?: boolean }) => (
-  <div className="bg-white rounded-3xl border-4 border-black p-6 shadow-lg cursor-pointer hover:shadow-xl transition-shadow" onClick={onClick}>
-    <div className="flex items-start gap-4 mb-4">
-      <div className="bg-[#7C3AED] text-white px-4 py-2 rounded-2xl font-bold text-lg">
-        ${bet.amount}
+const BetCard = ({ bet, onClick, showActions = false }: { bet: any; onClick: () => void; showActions?: boolean }) => {
+  // Use usernames from bet data, fallback to formatted addresses
+  const challengerName = bet.challengerUsername || `${bet.challenger?.slice(0, 6)}...${bet.challenger?.slice(-4)}`
+  const challengeeName = bet.challengeeUsername || `${bet.challengee?.slice(0, 6)}...${bet.challengee?.slice(-4)}`
+  const displayName = bet.isChallenger ? challengeeName : challengerName
+  const displayPfp = bet.isChallenger ? bet.challengeePfp : bet.challengerPfp
+  
+  return (
+    <div className="bg-white rounded-3xl border-4 border-black p-6 shadow-lg cursor-pointer hover:shadow-xl transition-shadow" onClick={onClick}>
+      <div className="flex items-start gap-4 mb-4">
+        <div className="bg-[#7C3AED] text-white px-4 py-3 rounded-2xl font-bold text-2xl">
+          ${bet.amount}
+        </div>
+        <div className="flex-1">
+          <p className="text-gray-800 font-medium text-lg">
+            {bet.condition}
+          </p>
+        </div>
       </div>
-      <div className="flex-1">
-        <p className="text-gray-800 font-medium">
-          {bet.condition}
-        </p>
+      
+      {showActions && bet.status === 'OPEN' && !bet.isChallenger && (
+        <div className="flex gap-3 mb-4">
+          <button className="flex-1 bg-green-500 text-white py-3 rounded-2xl font-bold hover:bg-green-600 transition-colors text-lg">
+            Accept Bet
+          </button>
+          <button className="flex-1 border-2 border-red-500 text-red-500 py-3 rounded-2xl font-bold hover:bg-red-50 transition-colors text-lg">
+            Reject Bet
+          </button>
+        </div>
+      )}
+      
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {displayPfp ? (
+            <img src={displayPfp} alt={displayName} className="w-10 h-10 rounded-full" />
+          ) : (
+            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+              <span className="text-gray-500 text-xs font-medium">
+                {displayName.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          )}
+          <span className="font-medium text-gray-700 text-base">
+            {displayName}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 text-green-600">
+          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+          <span className="text-sm font-medium">24 Hours</span>
+        </div>
       </div>
     </div>
-    
-    {showActions && bet.status === 'OPEN' && !bet.isChallenger && (
-      <div className="flex gap-3 mb-4">
-        <button className="flex-1 bg-green-500 text-white py-3 rounded-2xl font-bold hover:bg-green-600 transition-colors">
-          Accept Bet
-        </button>
-        <button className="flex-1 border-2 border-red-500 text-red-500 py-3 rounded-2xl font-bold hover:bg-red-50 transition-colors">
-          Reject Bet
-        </button>
-      </div>
-    )}
-    
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-        <span className="font-medium text-gray-700">
-          {bet.isChallenger ? 'You challenged' : 'Challenged by'} {bet.isChallenger ? bet.challengee : bet.challenger}
-        </span>
-      </div>
-      <div className="flex items-center gap-1 text-green-600">
-        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-        <span className="text-sm font-medium">24 Hours</span>
-      </div>
-    </div>
-  </div>
-)
+  )
+}
 
 export default function Page() {
   const router = useRouter()
@@ -153,7 +169,7 @@ export default function Page() {
       <div className="mx-auto w-full max-w-xl">
         <BrandHeader />
 
-        <div className="px-4 py-5 space-y-6">
+        <div className="px-6 py-6 space-y-6 bg-gray-50">
 
           {/* Bets List */}
           {activeAddress && (
@@ -213,23 +229,6 @@ export default function Page() {
           )}
         </div>
 
-        {/* Bottom Navigation */}
-        <div className="fixed bottom-0 left-0 right-0 bg-[#7C3AED] rounded-t-3xl">
-          <div className="flex items-center justify-around py-4 px-6 max-w-xl mx-auto">
-            <button className="p-3 bg-white rounded-full">
-              <Home className="w-6 h-6 text-[#7C3AED]" />
-            </button>
-            <button 
-              className="p-4 bg-white rounded-full"
-              onClick={handleCreateBetClick}
-            >
-              <Plus className="w-8 h-8 text-[#7C3AED]" />
-            </button>
-            <button className="p-3">
-              <User className="w-6 h-6 text-white" />
-            </button>
-          </div>
-        </div>
       </div>
     </main>
   )

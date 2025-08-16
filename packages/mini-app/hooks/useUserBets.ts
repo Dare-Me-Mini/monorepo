@@ -21,6 +21,13 @@ export interface UserBetSummary {
   createdAt: Date;
   acceptanceDeadline: Date;
   proofSubmissionDeadline: Date;
+  // Farcaster user data
+  challengerFid?: number;
+  challengerUsername?: string;
+  challengerPfp?: string;
+  challengeeFid?: number;
+  challengeeUsername?: string;
+  challengeePfp?: string;
 }
 
 interface UseUserBetsOptions {
@@ -88,6 +95,13 @@ export function useUserBets(options: UseUserBetsOptions = {}) {
           createdAt: new Date(parseInt(bet.createdTimestamp, 10)),
           acceptanceDeadline: new Date(parseInt(bet.acceptanceDeadline, 10)),
           proofSubmissionDeadline: new Date(parseInt(bet.proofSubmissionDeadline, 10)),
+          // Farcaster user data
+          challengerFid: bet.challengerFid,
+          challengerUsername: bet.challengerUsername,
+          challengerPfp: bet.challengerPfp,
+          challengeeFid: bet.challengeeFid,
+          challengeeUsername: bet.challengeeUsername,
+          challengeePfp: bet.challengeePfp,
         };
       });
 
