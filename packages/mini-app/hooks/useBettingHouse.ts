@@ -104,13 +104,13 @@ export function useBettingHouse() {
         return { success: false, error: "Bet not found" };
       }
 
-      const token = getTokenByAddress(bet.token as string);
+      const token = getTokenByAddress(bet[12] as string);
       if (!token) {
         return { success: false, error: "Unsupported token" };
       }
 
       // Check and approve token allowance first
-      const approvalResult = await checkAndApproveIfNeeded(token, bet.amount);
+      const approvalResult = await checkAndApproveIfNeeded(token, bet[4]);
       if (!approvalResult.success) {
         return { success: false, error: approvalResult.error };
       }
@@ -248,11 +248,11 @@ export function useBettingHouse() {
       const bet = await getBet(betId);
       if (!bet) return null;
       
-      const token = getTokenByAddress(bet.token as string);
+      const token = getTokenByAddress(bet[12] as string);
       if (!token) return null;
       
       return {
-        formatted: formatTokenAmount(bet.amount, token),
+        formatted: formatTokenAmount(bet[4], token),
         token: token
       };
     } catch (error) {

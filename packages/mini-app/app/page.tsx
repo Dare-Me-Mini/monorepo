@@ -4,42 +4,36 @@ import { useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Rocket, Trophy, Zap, Clock, CheckCircle } from "lucide-react"
+import { Rocket, Trophy, Zap, Clock, CheckCircle, Bell } from "lucide-react"
 import { SignInButton } from "@farcaster/auth-kit"
 import { useAppState } from "@/components/AppStateProvider"
 import { useUserBets } from "@/hooks/useUserBets"
 import { getBetStatusColor } from "@/lib/indexer"
 import { managedToast } from "@/lib/toast"
+import { getCurrentState, formatTimeRemaining, getTimeStatusColor } from "@/lib/betState"
+import { useBettingHouse } from "@/hooks/useBettingHouse"
+import { useAccount } from "wagmi"
 import toast from "react-hot-toast"
 
 const BrandHeader = () => {
   const { activeAddress, isAuthenticated } = useAppState()
   const displayAddress = activeAddress ? `${activeAddress.slice(0, 6)}…${activeAddress.slice(-4)}` : (isAuthenticated ? '—' : 'Sign in')
   return (
-    <div className="relative overflow-hidden rounded-b-[52px] bg-[#6A33FF] text-white pt-8 pb-16 px-6 shadow-xl">
-      <div className="flex items-center justify-between">
-        <div className="text-2xl font-extrabold font-display">ibet</div>
-        <div className="rounded-full px-4 py-2 text-sm bg-white/20 backdrop-blur-sm">
-          {!activeAddress && !isAuthenticated ? <SignInButton /> : displayAddress}
-        </div>
-      </div>
-      <div className="mt-8 leading-[0.95]">
-        <div className="font-extrabold text-[56px] tracking-tight font-display flex flex-col">
-          <div className="flex items-center">
-            Bet
-            <Rocket className="ml-2 h-10 w-10" />
-          </div>
-          <div className="flex items-center">
-            Compete
-            <Zap className="ml-2 h-10 w-10" />
-          </div>
-          <div className="flex items-center">
-            Win
-            <Trophy className="ml-2 h-10 w-10" />
+    <div className="relative overflow-hidden rounded-b-[60px] bg-[#7C3AED] text-white pt-4 pb-8 px-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="text-xl font-bold">ibet</div>
+        <div className="flex items-center gap-3">
+          <Bell className="w-5 h-5 text-white" />
+          <div className="text-sm font-medium">
+            {displayAddress}
           </div>
         </div>
       </div>
-      {/* decorative fold removed */}
+      <div className="text-center">
+        <div className="text-4xl font-bold mb-2">
+          Bet 🚀 & ⚡ Compete
+        </div>
+      </div>
     </div>
   )
 }
@@ -48,34 +42,105 @@ type DareStatus = "pending" | "accepted" | "rejected" | "completed"
 
 export type Dare = { id: string; description: string; stakeUsd: number; challenger: string; challengee: string; status: DareStatus; createdAt: number }
 
-const BetCard = ({ bet, onClick }: { bet: any; onClick: () => void }) => (
-  <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={onClick}>
-    <CardContent className="p-4">
-      <div className="flex items-start justify-between mb-2">
-        <div className="text-sm font-medium truncate flex-1 mr-2">{bet.condition}</div>
-        <div className={`text-xs px-2 py-1 rounded-full ${getBetStatusColor(bet.status)}`}>
-          {bet.statusLabel}
+const BetCard = ({ bet, onClick, onAccept, onReject, isSubmitting, isApproving }: { 
+  bet: any; 
+  onClick: () => void;
+  onAccept?: () => void;
+  onReject?: () => void;
+  isSubmitting?: boolean;
+  isApproving?: boolean;
+}) => {
+  // Use usernames from bet data, fallback to formatted addresses
+  const challengerName = bet.challengerUsername || `${bet.challenger?.slice(0, 6)}...${bet.challenger?.slice(-4)}`
+  const challengeeName = bet.challengeeUsername || `${bet.challengee?.slice(0, 6)}...${bet.challengee?.slice(-4)}`
+  const displayName = bet.isChallenger ? challengeeName : challengerName
+  const displayPfp = bet.isChallenger ? bet.challengeePfp : bet.challengerPfp
+  
+  // Calculate current state and time remaining
+  const betState = getCurrentState({
+    lastUpdatedStatus: bet.status,
+    acceptanceDeadline: bet.acceptanceDeadline,
+    proofSubmissionDeadline: bet.proofSubmissionDeadline,
+    proofAcceptanceDeadline: bet.proofAcceptanceDeadline,
+    mediationDeadline: bet.mediationDeadline,
+    isClosed: bet.isClosed
+  })
+  
+  const timeDisplay = betState.deadline > 0 ? formatTimeRemaining(betState.timeRemaining) : 'No deadline'
+  const timeColor = getTimeStatusColor(betState.timeRemaining, betState.deadline)
+  
+  return (
+    <div className="bg-white rounded-3xl border-4 border-black p-6 shadow-lg">
+      {/* Bet content */}
+      <div className="flex items-start gap-4 mb-4" onClick={onClick} style={{cursor: 'pointer'}}>
+        <div className="bg-[#7C3AED] text-white px-4 py-3 rounded-2xl font-bold text-2xl">
+          ${bet.amount}
+        </div>
+        <div className="flex-1">
+          <p className="text-gray-800 font-medium text-lg">
+            {bet.condition}
+          </p>
         </div>
       </div>
-      <div className="flex items-center justify-between text-sm text-foreground/70">
+      
+      {/* Accept/Reject buttons for OPEN bets */}
+      {betState.currentStatus === 'OPEN' && !bet.isChallenger && (
+        <div className="flex gap-3 mb-4">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onAccept?.();
+            }}
+            disabled={isSubmitting || isApproving}
+            className="flex-1 bg-green-500 text-white py-3 rounded-2xl font-bold hover:bg-green-600 transition-colors text-lg disabled:opacity-50"
+          >
+            {isApproving ? 'Approving...' : isSubmitting ? 'Processing...' : 'Accept Bet'}
+          </button>
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onReject?.();
+            }}
+            disabled={isSubmitting || isApproving}
+            className="flex-1 border-2 border-red-500 text-red-500 py-3 rounded-2xl font-bold hover:bg-red-50 transition-colors text-lg disabled:opacity-50"
+          >
+            {isSubmitting ? 'Processing...' : 'Reject Bet'}
+          </button>
+        </div>
+      )}
+      
+      {/* User info and time */}
+      <div className="flex items-center justify-between" onClick={onClick} style={{cursor: 'pointer'}}>
+        <div className="flex items-center gap-3">
+          {displayPfp ? (
+            <img src={displayPfp} alt={displayName} className="w-10 h-10 rounded-full" />
+          ) : (
+            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+              <span className="text-gray-500 text-xs font-medium">
+                {displayName.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          )}
+          <span className="font-medium text-gray-700 text-base">
+            {displayName}
+          </span>
+        </div>
         <div className="flex items-center gap-1">
-          <span>{bet.token.icon}</span>
-          <span>{bet.amount} {bet.token.symbol}</span>
-        </div>
-        <div className="text-xs">
-          {bet.createdAt.toLocaleDateString()}
+          <div className={`w-2 h-2 rounded-full ${betState.timeRemaining > 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <span className={`text-sm font-medium ${timeColor}`}>
+            {timeDisplay}
+          </span>
         </div>
       </div>
-      <div className="text-xs text-foreground/60 mt-1">
-        {bet.isChallenger ? 'You challenged' : 'You were challenged'}
-      </div>
-    </CardContent>
-  </Card>
-)
+    </div>
+  )
+}
 
 export default function Page() {
   const router = useRouter()
   const { activeAddress, isWalletConnected, isAuthenticated } = useAppState()
+  const { isConnected: isWalletActive } = useAccount()
+  const { acceptBet, rejectBet, isSubmitting, isApproving } = useBettingHouse()
   const lastBetsError = useRef<string | null>(null)
 
   // Consider user "connected" if they have either a wallet connection or are authenticated with Farcaster
@@ -117,7 +182,7 @@ export default function Page() {
 
   const handleCreateBetClick = () => {
     console.log('handleCreateBetClick called, isConnected:', isConnected, typeof isConnected)
-    if (!isConnected) {
+    if (!isWalletActive) {
       console.log('Connection check failed - showing toast error')
       toast.error('Please connect your wallet first to create a bet')
       return
@@ -140,35 +205,64 @@ export default function Page() {
     }
   }
 
+  const handleAcceptBet = async (bet: any) => {
+    if (!isWalletActive) {
+      toast.error('Please connect your wallet first')
+      return
+    }
+    
+    try {
+      const result = await acceptBet(Number(bet.id))
+      if (result.success) {
+        toast.success('Bet accepted successfully!')
+        // Refresh the bets list
+        setTimeout(() => window.location.reload(), 2000)
+      } else {
+        toast.error(result.error || 'Failed to accept bet')
+      }
+    } catch (error) {
+      console.error('Accept bet error:', error)
+      toast.error('Failed to accept bet')
+    }
+  }
+
+  const handleRejectBet = async (bet: any) => {
+    if (!isWalletActive) {
+      toast.error('Please connect your wallet first')
+      return
+    }
+    
+    try {
+      const result = await rejectBet(Number(bet.id))
+      if (result.success) {
+        toast.success('Bet rejected successfully!')
+        // Refresh the bets list
+        setTimeout(() => window.location.reload(), 2000)
+      } else {
+        toast.error(result.error || 'Failed to reject bet')
+      }
+    } catch (error) {
+      console.error('Reject bet error:', error)
+      toast.error('Failed to reject bet')
+    }
+  }
+
 
   return (
-    <main className="min-h-dvh bg-background text-foreground pb-24">
+    <main className="min-h-dvh bg-gray-50 text-foreground pb-24">
       <div className="mx-auto w-full max-w-xl">
         <BrandHeader />
 
-        <div className="px-4 py-5 space-y-6">
-          {/* Create Bet Button */}
-          <div>
-            <Button
-              className={`w-full h-14 rounded-2xl text-lg font-extrabold shadow-[0_8px_0_#2b2b2b] active:translate-y-[2px] active:shadow-[0_4px_0_#2b2b2b] ${
-                isConnected
-                  ? 'bg-black text-white'
-                  : 'bg-gray-400 text-gray-200 cursor-not-allowed'
-              }`}
-              onClick={handleCreateBetClick}
-              disabled={!isConnected}
-            >
-              {isConnected ? 'Make a Bet' : 'Connect Wallet to Bet'}
-            </Button>
-          </div>
+        <div className="px-6 py-6 space-y-6 bg-gray-50">
 
           {/* Bets List */}
           {activeAddress && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Your Bets</h2>
-                {loading && <div className="text-sm text-foreground/60">Loading...</div>}
-              </div>
+              {loading && (
+                <div className="text-center py-8">
+                  <div className="text-lg text-gray-600">Loading your bets...</div>
+                </div>
+              )}
 
               {betsError && (
                 <div className="text-red-500 text-sm p-3 bg-red-50 rounded-lg">
@@ -177,39 +271,49 @@ export default function Page() {
               )}
 
               {!loading && bets.length === 0 && !betsError && (
-                <div className="text-center py-8 text-foreground/60">
-                  <div className="text-4xl mb-2">🎯</div>
-                  <div>No bets yet</div>
-                  <div className="text-sm">Create your first bet to get started!</div>
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-4">🎯</div>
+                  <div className="text-xl font-semibold text-gray-800 mb-2">No bets yet</div>
+                  <div className="text-gray-600">Create your first bet to get started!</div>
                 </div>
               )}
 
               {/* Active Bets */}
               {activeBets.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <Clock className="h-4 w-4" />
-                    <span>Active ({activeBets.length})</span>
-                  </div>
+                <div className="space-y-4">
+                  <h2 className="text-2xl font-bold text-gray-800">Active Bets</h2>
                   {activeBets.map((bet) => (
-                    <BetCard key={bet.id} bet={bet} onClick={() => handleBetClick(bet)} />
+                    <BetCard 
+                      key={bet.id} 
+                      bet={bet} 
+                      onClick={() => handleBetClick(bet)}
+                      onAccept={() => handleAcceptBet(bet)}
+                      onReject={() => handleRejectBet(bet)}
+                      isSubmitting={isSubmitting}
+                      isApproving={isApproving}
+                    />
                   ))}
                 </div>
               )}
 
               {/* Completed Bets */}
               {completedBets.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Completed ({completedBets.length})</span>
-                  </div>
-                  {completedBets.slice(0, 5).map((bet) => (
-                    <BetCard key={bet.id} bet={bet} onClick={() => handleBetClick(bet)} />
+                <div className="space-y-4">
+                  <h2 className="text-2xl font-bold text-gray-800">Completed Bets</h2>
+                  {completedBets.slice(0, 3).map((bet) => (
+                    <BetCard 
+                      key={bet.id} 
+                      bet={bet} 
+                      onClick={() => handleBetClick(bet)}
+                      onAccept={() => handleAcceptBet(bet)}
+                      onReject={() => handleRejectBet(bet)}
+                      isSubmitting={isSubmitting}
+                      isApproving={isApproving}
+                    />
                   ))}
-                  {completedBets.length > 5 && (
-                    <div className="text-center text-sm text-foreground/60">
-                      +{completedBets.length - 5} more completed bets
+                  {completedBets.length > 3 && (
+                    <div className="text-center text-sm text-gray-600 mt-4">
+                      +{completedBets.length - 3} more completed bets
                     </div>
                   )}
                 </div>
@@ -224,6 +328,7 @@ export default function Page() {
             </div>
           )}
         </div>
+
       </div>
     </main>
   )

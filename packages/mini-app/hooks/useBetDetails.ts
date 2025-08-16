@@ -18,6 +18,7 @@ interface BetDetails {
   acceptanceDeadline: Date;
   proofSubmissionDeadline: Date;
   proofAcceptanceDeadline: Date;
+  mediationDeadline?: Date;
   isClosed: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -59,6 +60,7 @@ export function useBetDetails(betId: string | number | null) {
             acceptanceDeadline: new Date(),
             proofSubmissionDeadline: new Date(),
             proofAcceptanceDeadline: new Date(),
+            mediationDeadline: undefined,
             isClosed: false,
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -93,9 +95,10 @@ export function useBetDetails(betId: string | number | null) {
           challengee: bet.challengee,
           mediator: bet.mediator,
           proof: bet.proof,
-          acceptanceDeadline: new Date(bet.acceptanceDeadline),
-          proofSubmissionDeadline: new Date(bet.proofSubmissionDeadline),
-          proofAcceptanceDeadline: new Date(bet.proofAcceptanceDeadline),
+          acceptanceDeadline: new Date(parseInt(bet.acceptanceDeadline, 10)),
+          proofSubmissionDeadline: new Date(parseInt(bet.proofSubmissionDeadline, 10)),
+          proofAcceptanceDeadline: new Date(parseInt(bet.proofAcceptanceDeadline, 10)),
+          mediationDeadline: bet.mediationDeadline ? new Date(parseInt(bet.mediationDeadline, 10)) : undefined,
           isClosed: bet.isClosed,
           createdAt: new Date(bet.createdTimestamp),
           updatedAt: new Date(bet.updatedAt),

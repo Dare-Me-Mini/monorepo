@@ -17,7 +17,7 @@ export function useTokenAllowance() {
   const [isApproving, setIsApproving] = useState(false);
 
   const checkAllowance = useCallback(async (token: Token): Promise<bigint> => {
-    if (!address || !publicClient) return 0n;
+    if (!address || !publicClient) return BigInt(0);
 
     try {
       const tokenContract = getContract({
@@ -34,12 +34,12 @@ export function useTokenAllowance() {
       return allowance;
     } catch (error) {
       console.error("Failed to check allowance:", error);
-      return 0n;
+      return BigInt(0);
     }
   }, [address, publicClient]);
 
   const checkBalance = useCallback(async (token: Token): Promise<bigint> => {
-    if (!address || !publicClient) return 0n;
+    if (!address || !publicClient) return BigInt(0);
 
     try {
       const tokenContract = getContract({
@@ -52,7 +52,7 @@ export function useTokenAllowance() {
       return balance;
     } catch (error) {
       console.error("Failed to check balance:", error);
-      return 0n;
+      return BigInt(0);
     }
   }, [address, publicClient]);
 
