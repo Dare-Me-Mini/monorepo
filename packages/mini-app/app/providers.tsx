@@ -21,7 +21,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         >
           <AppStateProvider>
             {children}
-            <Toaster
+{/*             <Toaster
               position="top-center"
               reverseOrder={false}
               gutter={8}
@@ -54,7 +54,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                   },
                 },
               }}
-            />
+            /> */}
           </AppStateProvider>
         </AuthKitProvider>
       </QueryClientProvider>
