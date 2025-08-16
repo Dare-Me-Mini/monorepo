@@ -14,6 +14,7 @@ import { getTokenBySymbol, DEFAULT_TOKEN, formatTokenAmount, type Token } from '
 import { useBetDetails } from '@/hooks/useBetDetails'
 import { getBetStatusColor } from '@/lib/indexer'
 import { getCurrentState, formatTimeRemaining } from '@/lib/betState'
+import { useAppState } from '@/components/AppStateProvider'
 
 type DareStatus = 'pending' | 'accepted' | 'rejected' | 'completed'
 
@@ -21,6 +22,7 @@ export default function DareClient({ id }: { id: string }) {
   const router = useRouter()
   const qp = useSearchParams()
   const { isConnected } = useAccount()
+  const { activeAddress } = useAppState()
   const { acceptBet, rejectBet, isSubmitting, isApproving } = useBettingHouse()
   const [copied, setCopied] = useState(false)
   const [currentTime, setCurrentTime] = useState(Date.now())
@@ -40,6 +42,10 @@ export default function DareClient({ id }: { id: string }) {
   
   // Show loading state if we don't have essential data yet
   const hasEssentialData = betDetails && !betDetails.loading && !betDetails.error
+  
+  // Check if current user is the challengee (who can accept/reject)
+  const isChallengee = hasEssentialData && activeAddress && 
+    betDetails.challengee.toLowerCase() === activeAddress.toLowerCase()
 
   useEffect(() => {
     ;(async () => {
@@ -115,22 +121,35 @@ export default function DareClient({ id }: { id: string }) {
     }
   }
 
-  // Calculate bet state for countdown (recalculated every second)
-  const betState = betDetails ? getCurrentState({
-    lastUpdatedStatus: betDetails.status,
-    acceptanceDeadline: betDetails.acceptanceDeadline,
-    proofSubmissionDeadline: betDetails.proofSubmissionDeadline,
-    proofAcceptanceDeadline: betDetails.proofAcceptanceDeadline,
-    mediationDeadline: betDetails.mediationDeadline,
-    isClosed: betDetails.isClosed
-  }) : null
+  // Calculate bet state for countdown (recalculated every second using currentTime)
+  const betState = useMemo(() => {
+    if (!betDetails) return null;
+    return getCurrentState({
+      lastUpdatedStatus: betDetails.status,
+      acceptanceDeadline: betDetails.acceptanceDeadline,
+      proofSubmissionDeadline: betDetails.proofSubmissionDeadline,
+      proofAcceptanceDeadline: betDetails.proofAcceptanceDeadline,
+      mediationDeadline: betDetails.mediationDeadline,
+      isClosed: betDetails.isClosed
+    });
+  }, [betDetails, currentTime]) // Recalculate when currentTime changes
 
   const formatCountdown = (timeRemaining: number) => {
     if (timeRemaining <= 0) return "00:00:00"
-    const hours = Math.floor(timeRemaining / (1000 * 60 * 60))
+    
+    const totalHours = Math.floor(timeRemaining / (1000 * 60 * 60))
     const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60))
     const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000)
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+    
+    // If more than 24 hours, show days:hours:minutes format
+    if (totalHours >= 24) {
+      const days = Math.floor(totalHours / 24)
+      const hours = totalHours % 24
+      return `${days}d ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+    }
+    
+    // Standard hours:minutes:seconds format
+    return `${totalHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
   }
 
   return (
@@ -254,8 +273,8 @@ export default function DareClient({ id }: { id: string }) {
 
         {/* Content Area */}
         <div className="px-6 py-6 space-y-6">
-          {/* Countdown Timer */}
-          {hasEssentialData && betState && betState.timeRemaining > 0 && status === 'OPEN' && (
+          {/* Countdown Timer - Only for challengee */}
+          {hasEssentialData && betState && betState.timeRemaining > 0 && status === 'OPEN' && isChallengee && (
             <div className="bg-white rounded-2xl p-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-gray-700 font-medium">Time Left to Accept</span>
@@ -266,8 +285,8 @@ export default function DareClient({ id }: { id: string }) {
             </div>
           )}
 
-          {/* Accept/Reject Buttons */}
-          {hasEssentialData && status === 'OPEN' && (
+          {/* Accept/Reject Buttons - Only for challengee */}
+          {hasEssentialData && status === 'OPEN' && isChallengee && (
             <div className="flex gap-4">
               <button 
                 onClick={accept} 
@@ -283,6 +302,26 @@ export default function DareClient({ id }: { id: string }) {
               >
                 {isSubmitting ? "Processing..." : "Reject Bet"}
               </button>
+            </div>
+          )}
+
+          {/* Status Information for non-challengees */}
+          {hasEssentialData && status === 'OPEN' && !isChallengee && (
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+              <div className="text-blue-800 text-center">
+                <div className="font-medium mb-1">Bet Status: Open</div>
+                <div className="text-sm">
+                  {activeAddress ? 
+                    "Only the challengee can accept or reject this bet." :
+                    "Connect your wallet to interact with bets."
+                  }
+                </div>
+                {betState && betState.timeRemaining > 0 && (
+                  <div className="text-xs mt-2 text-blue-600">
+                    Time remaining: {formatCountdown(betState.timeRemaining)}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
