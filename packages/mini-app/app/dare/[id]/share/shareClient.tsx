@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { sdk } from '@farcaster/miniapp-sdk'
 import { useBetDetails } from '@/hooks/useBetDetails'
+import { validatePublicEnv } from '@/lib/env'
 
 export default function ShareClient({ id }: { id: string }) {
   const [copied, setCopied] = useState(false)
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
 
   // Use the id from the URL path as the betId and fetch data from database
   const betDetails = useBetDetails(id)
@@ -19,22 +19,17 @@ export default function ShareClient({ id }: { id: string }) {
   const to = betDetails?.challengeeUsername || 'Friend'
   const isLoading = betDetails?.loading || !betDetails
 
-
-
-
-
   const fullLink = useMemo(() => {
+    const env = validatePublicEnv();
     // Only pass betId in the URL, no other parameters needed
-    return `${APP_URL}/dare/${id}`
-  }, [APP_URL, id])
+    return `${env.appUrl}/dare/${id}`
+  }, [id])
 
   useEffect(() => {
     ;(async () => {
       await sdk.actions.ready()
     })()
   }, [])
-
-
 
   const share = async () => {
     // Temporarily disable Farcaster share; navigate to accept/reject page instead
@@ -106,12 +101,10 @@ export default function ShareClient({ id }: { id: string }) {
         </Card>
         <div className="px-3">
           <Button onClick={share} className="w-full h-12 rounded-2xl bg-black text-white text-base shadow-[0_4px_0_#2b2b2b] active:translate-y-[2px] active:shadow-[0_2px_0_#2b2b2b]">
-            Share to Farcaster
+            {copied ? 'Link Copied!' : 'Share to Farcaster'}
           </Button>
         </div>
       </div>
     </main>
   )
 }
-
-

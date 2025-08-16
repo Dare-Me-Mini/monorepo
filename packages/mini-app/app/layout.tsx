@@ -6,8 +6,9 @@ import MiniAppReady from "../components/MiniAppReady"
 import BottomNav from "@/components/BottomNav"
 import Providers from "./providers"
 import WalletAutoConnect from "@/components/WalletAutoConnect"
+import { validatePublicEnv } from "@/lib/env"
 
-const PROD = process.env.NEXT_PUBLIC_APP_URL || "https://dare-me-eight.vercel.app"
+const env = validatePublicEnv();
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -29,14 +30,14 @@ const spaceGrotesk = Space_Grotesk({
 
 const miniappEmbed = {
   version: "1",
-  imageUrl: `${PROD}/og.png`,
+  imageUrl: `${env.appUrl}/og.png`,
   button: {
     title: "Open Dares",
     action: {
       type: "launch_miniapp",
       name: "Dares",
-      url: PROD,
-      splashImageUrl: `${PROD}/splash-200.png`,
+      url: env.appUrl,
+      splashImageUrl: `${env.appUrl}/splash-200.png`,
       splashBackgroundColor: "#0f0f23",
     },
   },

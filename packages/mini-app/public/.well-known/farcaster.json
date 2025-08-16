@@ -7,18 +7,18 @@
   "miniapp": {
     "version": "1",
     "name": "Polls",
-    "iconUrl": "https://polls-nikhil.vercel.app/icon-1024.png",
-    "homeUrl": "https://polls-nikhil.vercel.app",
-    "splashImageUrl": "https://polls-nikhil.vercel.app/splash-200.png",
+    "iconUrl": "https://ibetyou.today/icon-1024.png",
+    "homeUrl": "https://ibetyou.today",
+    "splashImageUrl": "https://ibetyou.today/splash-200.png",
     "splashBackgroundColor": "#0f0f23",
     "subtitle": "Create and vote on polls",
     "description": "Create and vote on polls",
     "primaryCategory": "social",
     "tags": ["polls", "voting", "survey", "community", "feedback"],
     "screenshotUrls": [
-      "https://polls-nikhil.vercel.app/og.png"
+      "https://ibetyou.today/og.png"
     ],
-    "heroImageUrl": "https://polls-nikhil.vercel.app/og.png",
+    "heroImageUrl": "https://ibetyou.today/og.png",
     "ogTitle": "Polls",
     "ogDescription": "Create and vote on polls"
   }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { NeynarAPIClient, Configuration } from "@neynar/nodejs-sdk"
+import { validateServerEnv } from "@/lib/env"
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -16,16 +17,9 @@ export async function GET(req: NextRequest) {
     ? rawUsername.slice(1)
     : rawUsername
 
-  const apiKey = process.env.NEYNAR_API_KEY
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: "Server misconfiguration: NEYNAR_API_KEY not set" },
-      { status: 500 }
-    )
-  }
-
   try {
-    const config = new Configuration({ apiKey })
+    const env = validateServerEnv();
+    const config = new Configuration({ apiKey: env.neynarApiKey })
     const client = new NeynarAPIClient(config)
 
     const response = await client.lookupUserByUsername({ username })

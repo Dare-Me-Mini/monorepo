@@ -1,18 +1,27 @@
 import {z} from "zod";
 
 const publicEnvSchema = z.object({
-    bettingHouseContractAddress: z.string().min(1, "Contract address is required"),
-    rpcUrl: z.string().url("RPC URL must be a valid URL")
+    bettingHouseContractAddress: z.string(),
+    rpcUrl: z.url(),
+    appUrl: z.url().optional().default("https://www.ibetyou.today"),
+    indexerUrl: z.url().optional().default("http://localhost:42069"),
 });
 
 export const validatePublicEnv = () => {
-    const env = {
+    return publicEnvSchema.parse({
         bettingHouseContractAddress: process.env.NEXT_PUBLIC_BETTING_HOUSE_CONTRACT_ADDRESS,
         rpcUrl: process.env.NEXT_PUBLIC_RPC_URL,
-    };
+        appUrl: process.env.NEXT_PUBLIC_APP_URL,
+        indexerUrl: process.env.NEXT_PUBLIC_INDEXER_URL,
+    });
+}
 
-    // Add debugging info
-    console.log('Environment variables:', env);
+const serverEnvSchema = z.object({
+    neynarApiKey: z.string(),
+});
 
-    return publicEnvSchema.parse(env);
+export const validateServerEnv = () => {
+    return serverEnvSchema.parse({
+        neynarApiKey: process.env.NEYNAR_API_KEY,
+    });
 }

@@ -1,27 +1,28 @@
 import type { Metadata } from "next"
 import DareClient from "./DareClient"
+import { validatePublicEnv } from "@/lib/env"
 
-const PROD = process.env.NEXT_PUBLIC_APP_URL || "https://dare-me-eight.vercel.app"
+const env = validatePublicEnv();
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
 export async function generateMetadata({ params, searchParams }: { params: { id: string }, searchParams: { t?: string } }): Promise<Metadata> {
-  const url = `${PROD}/dare/${params.id}`
+  const url = `${env.appUrl}/dare/${params.id}`
   const sp = new URLSearchParams()
   // Only include a cache-busting token to avoid stale previews in Farcaster
   sp.set('t', searchParams?.t ?? String(Math.floor(Date.now() / 1000)))
   const qs = sp.toString()
   const miniapp = {
     version: "1",
-    imageUrl: `${PROD}/dare/${params.id}/image${qs ? `?${qs}` : ''}`,
+    imageUrl: `${env.appUrl}/dare/${params.id}/image${qs ? `?${qs}` : ''}`,
     button: {
       title: "Open Dare",
       action: {
         type: "launch_miniapp",
         name: "Dares",
         url,
-        splashImageUrl: `${PROD}/splash-200.png`,
+        splashImageUrl: `${env.appUrl}/splash-200.png`,
         splashBackgroundColor: "#0f0f23",
       },
     },
