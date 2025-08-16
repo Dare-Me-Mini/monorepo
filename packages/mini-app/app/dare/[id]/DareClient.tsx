@@ -12,7 +12,7 @@ import { useAccount } from 'wagmi'
 import toast from 'react-hot-toast'
 import { getTokenBySymbol, DEFAULT_TOKEN, formatTokenAmount, type Token } from '@/lib/tokens'
 import { useBetDetails } from '@/hooks/useBetDetails'
-import { getBetStatusColor } from '@/lib/indexer'
+import { getBetStatusColor, getBetStatusLabel } from '@/lib/indexer'
 import { getCurrentState, formatTimeRemaining } from '@/lib/betState'
 import { useAppState } from '@/components/AppStateProvider'
 
@@ -37,7 +37,6 @@ export default function DareClient({ id }: { id: string }) {
   const from = betDetails?.challengerUsername || ''
   const to = betDetails?.challengeeUsername || ''
   const status = betDetails?.status || 'OPEN'
-  const statusLabel = betDetails?.statusLabel || 'Open'
   const isLoading = betDetails?.loading || !betDetails
   
   // Show loading state if we don't have essential data yet
@@ -46,6 +45,38 @@ export default function DareClient({ id }: { id: string }) {
   // Check if current user is the challengee (who can accept/reject)
   const isChallengee = hasEssentialData && activeAddress && 
     betDetails.challengee.toLowerCase() === activeAddress.toLowerCase()
+  
+  // Check if current user is the challenger
+  const isChallenger = hasEssentialData && activeAddress && 
+    betDetails.challenger.toLowerCase() === activeAddress.toLowerCase()
+  
+  // Get status and pending information
+  const statusLabel = hasEssentialData ? getBetStatusLabel(betState?.currentStatus || status) : ''
+  const statusColorClass = hasEssentialData ? getBetStatusColor(betState?.currentStatus || status) : ''
+  
+  // Determine what's pending and from whose perspective
+  const getPendingInfo = () => {
+    if (!hasEssentialData || !betState) return null
+    
+    if (betState.currentStatus === 'OPEN') {
+      if (isChallengee) return 'Your turn to accept or reject'
+      if (isChallenger) return 'Waiting for challengee to respond'
+      return 'Waiting for challengee to respond'
+    } else if (betState.currentStatus === 'ACCEPTED') {
+      if (isChallenger) return 'Your turn to submit proof'
+      if (isChallengee) return 'Waiting for challenger to submit proof'
+      return 'Waiting for proof submission'
+    } else if (betState.currentStatus === 'PROOF_SUBMITTED') {
+      if (isChallengee) return 'Your turn to review proof'
+      if (isChallenger) return 'Waiting for proof review'
+      return 'Waiting for proof review'
+    } else if (betState.currentStatus === 'PROOF_DISPUTED') {
+      return 'Awaiting mediation'
+    }
+    return null
+  }
+  
+  const pendingInfo = getPendingInfo()
 
   useEffect(() => {
     ;(async () => {
@@ -273,6 +304,27 @@ export default function DareClient({ id }: { id: string }) {
 
         {/* Content Area */}
         <div className="px-6 py-6 space-y-6">
+          {/* Status Information */}
+          {hasEssentialData && (
+            <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className={`text-sm px-3 py-1 rounded-full font-medium ${statusColorClass}`}>
+                    {statusLabel}
+                  </span>
+                  {pendingInfo && (
+                    <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                      {pendingInfo}
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-gray-500">
+                  Bet #{id}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Countdown Timer - Only for challengee */}
           {hasEssentialData && betState && betState.timeRemaining > 0 && status === 'OPEN' && isChallengee && (
             <div className="bg-white rounded-2xl p-4 shadow-sm">

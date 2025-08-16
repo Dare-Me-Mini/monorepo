@@ -23,6 +23,7 @@ import { useAppState } from "@/components/AppStateProvider"
 import { useUserBets } from "@/hooks/useUserBets"
 import { managedToast } from "@/lib/toast"
 import { getCurrentState, formatTimeRemaining, getTimeStatusColor } from "@/lib/betState"
+import { getBetStatusLabel, getBetStatusColor } from "@/lib/indexer"
 import { useBettingHouse } from "@/hooks/useBettingHouse"
 import { useAccount } from "wagmi"
 import toast from "react-hot-toast"
@@ -81,6 +82,26 @@ const BetCard = ({ bet, onClick, onAccept, onReject, isSubmitting, isApproving }
   const timeDisplay = betState.deadline > 0 ? formatTimeRemaining(betState.timeRemaining) : 'No deadline'
   const timeColor = getTimeStatusColor(betState.timeRemaining, betState.deadline)
   
+  // Status and perspective information
+  const statusLabel = getBetStatusLabel(betState.currentStatus)
+  const statusColorClass = getBetStatusColor(betState.currentStatus)
+  
+  // Determine whose turn it is / what's pending
+  const getPendingInfo = () => {
+    if (betState.currentStatus === 'OPEN') {
+      return bet.isChallenger ? 'Waiting for acceptance' : 'Your turn to respond'
+    } else if (betState.currentStatus === 'ACCEPTED') {
+      return bet.isChallenger ? 'Your turn to submit proof' : 'Waiting for proof'
+    } else if (betState.currentStatus === 'PROOF_SUBMITTED') {
+      return bet.isChallenger ? 'Waiting for proof review' : 'Your turn to review proof'
+    } else if (betState.currentStatus === 'PROOF_DISPUTED') {
+      return 'Awaiting mediation'
+    }
+    return null
+  }
+  
+  const pendingInfo = getPendingInfo()
+  
   return (
     <div
       className="bg-white rounded-2xl border-2 border-black p-4 shadow-[4px_4px_0px_#000] cursor-pointer"
@@ -94,6 +115,20 @@ const BetCard = ({ bet, onClick, onAccept, onReject, isSubmitting, isApproving }
           <p className="text-gray-800 font-medium text-sm leading-snug">
             {bet.condition}
           </p>
+        </div>
+      </div>
+
+      {/* Status indicators */}
+      <div className="flex items-center justify-between mb-3 px-1">
+        <div className="flex items-center gap-2">
+          <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColorClass}`}>
+            {statusLabel}
+          </span>
+          {pendingInfo && (
+            <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
+              {pendingInfo}
+            </span>
+          )}
         </div>
       </div>
 
