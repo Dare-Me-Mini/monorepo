@@ -1,6 +1,7 @@
 import { ponder } from "ponder:registry";
 import { bet, betEvent } from "ponder:schema";
 import { BettingHouseAbi } from "../abis/BettingHouseAbi";
+import { neynarService } from "./utils/neynar";
 
 type OnchainBet = readonly [
   `0x${string}`, // challenger
@@ -73,6 +74,11 @@ ponder.on("BettingHouse:BetCreated", async ({ event, context }) => {
 
   const status = STATUS[lastUpdatedStatus] ?? "OPEN";
 
+  // Lookup Farcaster user data for challenger and challengee
+  const farcasterUsers = await neynarService.getUsersByAddresses([challenger, challengee]);
+  const challengerUser = farcasterUsers[challenger.toLowerCase()]?.[0];
+  const challengeeUser = farcasterUsers[challengee.toLowerCase()]?.[0];
+
   await context.db.insert(bet).values({
     id: betId,
     challenger,
@@ -89,6 +95,13 @@ ponder.on("BettingHouse:BetCreated", async ({ event, context }) => {
     lastUpdatedStatus: status,
     token,
     isClosed,
+    // Farcaster user data
+    challengerFid: challengerUser?.fid || null,
+    challengerUsername: challengerUser?.username || null,
+    challengerPfp: challengerUser?.pfp_url || null,
+    challengeeFid: challengeeUser?.fid || null,
+    challengeeUsername: challengeeUser?.username || null,
+    challengeePfp: challengeeUser?.pfp_url || null,
     createdTxHash: event.transaction.hash,
     createdBlockNumber: event.block.number,
     createdTimestamp: toDate(event.block.timestamp),
@@ -106,10 +119,17 @@ ponder.on("BettingHouse:BetCreated", async ({ event, context }) => {
     details: {
       challenger,
       challengee,
-      amount,
+      amount: Number(amount),
       condition,
       token,
       mediator,
+      // Include Farcaster data in event details
+      challengerFid: challengerUser?.fid || null,
+      challengerUsername: challengerUser?.username || null,
+      challengerPfp: challengerUser?.pfp_url || null,
+      challengeeFid: challengeeUser?.fid || null,
+      challengeeUsername: challengeeUser?.username || null,
+      challengeePfp: challengeeUser?.pfp_url || null,
     },
   });
 });
