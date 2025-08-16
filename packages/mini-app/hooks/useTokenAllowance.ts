@@ -3,7 +3,7 @@
 import { useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { useState, useCallback } from "react";
 import { getContract, erc20Abi, maxUint256 } from "viem";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import { getBettingHouseReadContract } from "@/lib/contracts";
 import { validatePublicEnv } from "@/lib/env";
 import type { Token } from "@/lib/tokens";

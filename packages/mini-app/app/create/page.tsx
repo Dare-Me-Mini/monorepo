@@ -7,15 +7,18 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useBettingHouse } from "@/hooks/useBettingHouse"
-import { useAccount } from "wagmi"
-import { toast } from "sonner"
+import { useAppState } from "@/components/AppStateProvider"
+import toast from "react-hot-toast"
 import { extractBetIdFromTxHash, formatBetCondition, calculateDeadline } from "@/lib/betUtils"
 import { getTokenList, getTokenBySymbol, DEFAULT_TOKEN, type Token } from "@/lib/tokens"
 
 export default function CreatePage() {
   const router = useRouter()
-  const { isConnected } = useAccount()
+  const { isWalletConnected, isAuthenticated, activeAddress } = useAppState()
   const { createBet, isSubmitting, isApproving } = useBettingHouse()
+
+  // Consider user "connected" if they have either a wallet connection or are authenticated with Farcaster
+  const isConnected = isWalletConnected || (isAuthenticated && !!activeAddress)
   
   const [betName, setBetName] = useState("")
   const [friend, setFriend] = useState("")
@@ -29,6 +32,30 @@ export default function CreatePage() {
   const [friendLookupError, setFriendLookupError] = useState<string | null>(null)
   const [friendVerifiedAddress, setFriendVerifiedAddress] = useState<string | null>(null)
   const [friendCustodyAddress, setFriendCustodyAddress] = useState<string | null>(null)
+
+  // Redirect if wallet is not connected
+  useEffect(() => {
+    if (!isConnected) {
+      toast.error('Please connect your wallet to create a bet')
+      router.replace('/')
+      return
+    }
+  }, [isConnected, router])
+
+  // Don't render the page if wallet is not connected
+  if (!isConnected) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-lg font-semibold mb-2">Wallet Required</div>
+          <div className="text-sm text-muted-foreground mb-4">
+            Please connect your wallet to create a bet
+          </div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+        </div>
+      </div>
+    )
+  }
 
   useEffect(() => {
     const controller = new AbortController()
@@ -55,11 +82,18 @@ export default function CreatePage() {
         const data = await res.json()
         setFriendVerifiedAddress(data.walletAddress || null)
         setFriendCustodyAddress(data.custodyAddress || null)
+        if (data.walletAddress) {
+          toast.success(`Found wallet for ${username}`)
+        } else {
+          toast.error(`${username} doesn't have a verified wallet`)
+        }
       } catch (e: any) {
         if (e?.name !== 'AbortError') {
-          setFriendLookupError(e?.message || 'Failed to lookup user')
+          const errorMessage = e?.message || 'Failed to lookup user'
+          setFriendLookupError(errorMessage)
           setFriendVerifiedAddress(null)
           setFriendCustodyAddress(null)
+          toast.error(errorMessage)
         }
       } finally {
         setFriendLookupLoading(false)
@@ -128,9 +162,22 @@ export default function CreatePage() {
       }
     } catch (error) {
       console.error("Failed to create bet:", error);
+      toast.error("Failed to create bet. Please try again.");
     } finally {
       setCreating(false);
     }
+  }
+
+  // Don't render the form if wallet is not connected
+  if (!isConnected) {
+    return (
+      <main className="min-h-dvh bg-background text-foreground pb-24 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="text-lg font-semibold">Wallet Required</div>
+          <div className="text-foreground/60">Please connect your wallet to create a bet</div>
+        </div>
+      </main>
+    )
   }
 
   return (

@@ -1,7 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { sdk } from "@farcaster/miniapp-sdk"
+import { useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,6 +9,8 @@ import { SignInButton } from "@farcaster/auth-kit"
 import { useAppState } from "@/components/AppStateProvider"
 import { useUserBets } from "@/hooks/useUserBets"
 import { getBetStatusColor } from "@/lib/indexer"
+import { managedToast } from "@/lib/toast"
+import toast from "react-hot-toast"
 
 const BrandHeader = () => {
   const { activeAddress, isAuthenticated } = useAppState()
@@ -74,30 +75,69 @@ const BetCard = ({ bet, onClick }: { bet: any; onClick: () => void }) => (
 
 export default function Page() {
   const router = useRouter()
-  const [error, setError] = useState<string | null>(null)
-  const [added, setAdded] = useState<boolean>(false)
-  const { activeAddress } = useAppState()
-  
-  const { 
-    bets, 
-    activeBets, 
-    pendingBets, 
-    completedBets, 
-    loading, 
-    error: betsError 
-  } = useUserBets({ 
-    autoRefresh: true,
-    refreshInterval: 30000 
+  const { activeAddress, isWalletConnected, isAuthenticated } = useAppState()
+  const lastBetsError = useRef<string | null>(null)
+
+  // Consider user "connected" if they have either a wallet connection or are authenticated with Farcaster
+  const isConnected = isWalletConnected || (isAuthenticated && !!activeAddress)
+
+  // Debug logging
+  useEffect(() => {
+    console.log('Connection state:', {
+      isWalletConnected,
+      isAuthenticated,
+      activeAddress,
+      isConnected
+    })
+  }, [isWalletConnected, isAuthenticated, activeAddress, isConnected])
+
+  const {
+    bets,
+    activeBets,
+    completedBets,
+    loading,
+    error: betsError
+  } = useUserBets({
+    autoRefresh: !!activeAddress, // Only auto-refresh when there's an active address
+    refreshInterval: 30000
   })
 
+  // SDK initialization is handled by MiniAppReady component
+
   useEffect(() => {
-    ;(async () => {
-      await sdk.actions.ready()
-    })()
-  }, [])
+    if (betsError && betsError !== lastBetsError.current) {
+      // Temporarily disabled to prevent toast spam
+      console.log('Failed to load bets:', betsError)
+      lastBetsError.current = betsError
+    }
+    if (!betsError) {
+      lastBetsError.current = null
+    }
+  }, [betsError])
+
+  const handleCreateBetClick = () => {
+    console.log('handleCreateBetClick called, isConnected:', isConnected, typeof isConnected)
+    if (!isConnected) {
+      console.log('Connection check failed - showing toast error')
+      toast.error('Please connect your wallet first to create a bet')
+      return
+    }
+    console.log('Connection check passed - navigating to create page')
+    try {
+      router.push('/create')
+    } catch (err) {
+      console.error('Navigation failed:', err)
+      toast.error('Failed to navigate to create bet page')
+    }
+  }
 
   const handleBetClick = (bet: any) => {
-    router.push(`/dare/${bet.id}?betId=${bet.id}&desc=${encodeURIComponent(bet.condition)}&stake=${bet.amount}&token=${bet.token.symbol}`)
+    try {
+      router.push(`/dare/${bet.id}?betId=${bet.id}&desc=${encodeURIComponent(bet.condition)}&stake=${bet.amount}&token=${bet.token.symbol}`)
+    } catch (err) {
+      console.error('Navigation failed:', err)
+      managedToast.error('Failed to open bet')
+    }
   }
 
 
@@ -109,11 +149,16 @@ export default function Page() {
         <div className="px-4 py-5 space-y-6">
           {/* Create Bet Button */}
           <div>
-            <Button 
-              className="w-full h-14 rounded-2xl bg-black text-white text-lg font-extrabold shadow-[0_8px_0_#2b2b2b] active:translate-y-[2px] active:shadow-[0_4px_0_#2b2b2b]" 
-              onClick={() => router.push('/create')}
+            <Button
+              className={`w-full h-14 rounded-2xl text-lg font-extrabold shadow-[0_8px_0_#2b2b2b] active:translate-y-[2px] active:shadow-[0_4px_0_#2b2b2b] ${
+                isConnected
+                  ? 'bg-black text-white'
+                  : 'bg-gray-400 text-gray-200 cursor-not-allowed'
+              }`}
+              onClick={handleCreateBetClick}
+              disabled={!isConnected}
             >
-              Make a Bet
+              {isConnected ? 'Make a Bet' : 'Connect Wallet to Bet'}
             </Button>
           </div>
 

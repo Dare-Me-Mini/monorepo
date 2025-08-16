@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useMemo } from 'react'
+import React, { createContext, useContext, useMemo, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import { useProfile } from '@farcaster/auth-kit'
 
@@ -18,12 +18,25 @@ export type AppState = {
 const AppStateContext = createContext<AppState | undefined>(undefined)
 
 export function AppStateProvider({ children }: { children: React.ReactNode }) {
-  const { address: wagmiAddress, isConnected: isWalletConnected } = useAccount()
+  const { address: wagmiAddress, isConnected: isWalletConnected, connector } = useAccount()
   const { profile, isAuthenticated } = useProfile()
 
   const authKitAddress: HexAddress = profile?.verifications?.[0] ?? profile?.custody
 
   const activeAddress: HexAddress = isWalletConnected && wagmiAddress ? wagmiAddress : authKitAddress
+
+  // Debug logging for wallet connection state
+  useEffect(() => {
+    console.log('AppStateProvider - Wallet state:', {
+      wagmiAddress,
+      isWalletConnected,
+      connector: connector?.name,
+      authKitAddress,
+      isAuthenticated,
+      activeAddress,
+      profile: profile ? { fid: profile.fid, username: profile.username } : null
+    })
+  }, [wagmiAddress, isWalletConnected, connector, authKitAddress, isAuthenticated, activeAddress, profile])
 
   const value = useMemo<AppState>(() => ({
     wagmiAddress,

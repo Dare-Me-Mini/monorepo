@@ -2,7 +2,7 @@
 
 import { useAccount, useWalletClient, usePublicClient } from "wagmi";
 import { useState } from "react";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import { getBettingHouseContract, getBettingHouseReadContract } from "@/lib/contracts";
 import { zeroAddress } from "viem";
 import { parseTokenAmount, formatTokenAmount, getTokenByAddress, type Token } from "@/lib/tokens";

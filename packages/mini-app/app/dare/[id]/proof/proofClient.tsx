@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { useBettingHouse } from '@/hooks/useBettingHouse'
 import { useAccount } from 'wagmi'
-import { toast } from 'sonner'
+import toast from 'react-hot-toast'
 
 type Proof = { url: string; note: string; createdAt: number }
 
@@ -33,6 +33,30 @@ export default function ProofClient({ id }: { id: string }) {
       setBetId(1);
     }
   }, [qp])
+
+  // Redirect if wallet is not connected
+  useEffect(() => {
+    if (!isConnected) {
+      toast.error('Please connect your wallet to submit proof')
+      router.replace('/')
+      return
+    }
+  }, [isConnected, router])
+
+  // Don't render the page if wallet is not connected
+  if (!isConnected) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-lg font-semibold mb-2">Wallet Required</div>
+          <div className="text-sm text-muted-foreground mb-4">
+            Please connect your wallet to submit proof
+          </div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+        </div>
+      </div>
+    )
+  }
 
   useEffect(() => {
     try {

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useBettingHouse } from '@/hooks/useBettingHouse'
 import { useAccount } from 'wagmi'
-import { toast } from 'sonner'
+import toast from 'react-hot-toast'
 import { getTokenBySymbol, DEFAULT_TOKEN, formatTokenAmount, type Token } from '@/lib/tokens'
 import { useBetDetails } from '@/hooks/useBetDetails'
 import { getBetStatusColor } from '@/lib/indexer'
@@ -81,11 +81,11 @@ export default function DareClient({ id }: { id: string }) {
   }
 
   const shareLink = async () => {
-    const params = new URLSearchParams({ 
-      desc: description, 
-      stake: stake, 
-      from, 
-      to, 
+    const params = new URLSearchParams({
+      desc: description,
+      stake: stake,
+      from,
+      to,
       status: statusLabel,
       token: token.symbol
     })
@@ -93,13 +93,19 @@ export default function DareClient({ id }: { id: string }) {
     const url = `${window.location.origin}/dare/${id}?${params.toString()}&t=${Date.now()}`
     try {
       await sdk.actions.composeCast({ text: url })
+      toast.success("Cast created successfully!")
       return
-    } catch {}
+    } catch (err) {
+      console.error('Failed to create cast:', err)
+    }
     try {
       await navigator.clipboard.writeText(url)
       setCopied(true)
+      toast.success("Link copied to clipboard!")
       setTimeout(() => setCopied(false), 2000)
-    } catch {
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err)
+      toast.error("Failed to copy link")
       window.prompt('Copy dare link:', url)
     }
   }

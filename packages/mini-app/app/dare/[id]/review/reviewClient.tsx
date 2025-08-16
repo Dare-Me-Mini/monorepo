@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useBettingHouse } from '@/hooks/useBettingHouse'
 import { useAccount } from 'wagmi'
-import { toast } from 'sonner'
+import toast from 'react-hot-toast'
 
 type Proof = { url: string; note: string; createdAt: number }
 
@@ -36,6 +36,30 @@ export default function ReviewClient({ id }: { id: string }) {
       if (raw) setProof(JSON.parse(raw) as Proof)
     } catch {}
   }, [storageKey])
+
+  // Redirect if wallet is not connected
+  useEffect(() => {
+    if (!isConnected) {
+      toast.error('Please connect your wallet to review proof')
+      router.replace('/')
+      return
+    }
+  }, [isConnected, router])
+
+  // Don't render the page if wallet is not connected
+  if (!isConnected) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-lg font-semibold mb-2">Wallet Required</div>
+          <div className="text-sm text-muted-foreground mb-4">
+            Please connect your wallet to review proof
+          </div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+        </div>
+      </div>
+    )
+  }
 
   const acknowledge = async () => {
     if (!isConnected) {

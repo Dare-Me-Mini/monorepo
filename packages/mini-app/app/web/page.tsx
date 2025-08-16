@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import toast from "react-hot-toast"
 
 type FetchState = "idle" | "loading" | "success" | "error"
 
@@ -18,8 +19,12 @@ export default function WebDemoPage() {
     setError(null)
     setResult(null)
     const u = username.trim()
-    if (!u) return
+    if (!u) {
+      toast.error("Please enter a username")
+      return
+    }
     setState("loading")
+    const loadingToast = toast.loading("Looking up wallet...")
     try {
       const res = await fetch(`/api/neynar/wallet?username=${encodeURIComponent(u)}`)
       const data = await res.json()
@@ -28,9 +33,12 @@ export default function WebDemoPage() {
       }
       setResult(data)
       setState("success")
+      toast.success("Wallet found successfully!", { id: loadingToast })
     } catch (err: any) {
-      setError(err?.message || "Something went wrong")
+      const errorMessage = err?.message || "Something went wrong"
+      setError(errorMessage)
       setState("error")
+      toast.error(errorMessage, { id: loadingToast })
     }
   }
 
