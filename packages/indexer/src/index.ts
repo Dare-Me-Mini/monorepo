@@ -119,7 +119,7 @@ ponder.on("BettingHouse:BetCreated", async ({ event, context }) => {
     details: {
       challenger,
       challengee,
-      amount: Number(amount),
+      amount: amount.toString(),
       condition,
       token,
       mediator,
@@ -186,7 +186,10 @@ ponder.on("BettingHouse:BetAccepted", async ({ event, context }) => {
     betId,
     name: "BetAccepted",
     actor: event.transaction.from,
-    details: { feePerSide, totalFees },
+    details: { 
+      feePerSide: feePerSide.toString(), 
+      totalFees: totalFees.toString() 
+    },
   });
 });
 
@@ -245,7 +248,10 @@ ponder.on("BettingHouse:ProofDisputed", async ({ event, context }) => {
     betId,
     name: "ProofDisputed",
     actor: event.transaction.from,
-    details: { isMediating, mediationDeadline },
+    details: { 
+      isMediating, 
+      mediationDeadline: mediationDeadline.toString() 
+    },
   });
 });
 
@@ -284,7 +290,9 @@ ponder.on("BettingHouse:BetClaimed", async ({ event, context }) => {
     betId,
     name: "BetClaimed",
     actor: claimer,
-    details: { resultingStatus: status },
+    details: { 
+      resultingStatus: status 
+    },
   });
 });
 
