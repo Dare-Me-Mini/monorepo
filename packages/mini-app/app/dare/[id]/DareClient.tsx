@@ -23,7 +23,7 @@ export default function DareClient({ id }: { id: string }) {
   const qp = useSearchParams()
   const { isConnected } = useAccount()
   const { activeAddress } = useAppState()
-  const { acceptBet, rejectBet, isSubmitting, isApproving } = useBettingHouse()
+  const { acceptBet, rejectBet, cancelBet, isSubmitting, isApproving } = useBettingHouse()
   const [copied, setCopied] = useState(false)
   const [currentTime, setCurrentTime] = useState(Date.now())
 
@@ -102,6 +102,25 @@ export default function DareClient({ id }: { id: string }) {
     }
   }
 
+  const cancel = async () => {
+    if (!isConnected) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
+    
+    if (!id) {
+      toast.error("Bet ID not found");
+      return;
+    }
+
+    const result = await cancelBet(Number(id));
+    if (result.success) {
+      toast.success("Bet cancelled successfully!");
+      // Redirect to home page after successful cancellation
+      setTimeout(() => router.push('/'), 2000);
+    }
+  }
+
   const shareLink = async () => {
     // Only pass betId in the URL, no other parameters needed
     const url = `${window.location.origin}/dare/${id}?t=${Date.now()}`
@@ -157,6 +176,7 @@ export default function DareClient({ id }: { id: string }) {
     
     if (betState.currentStatus === 'OPEN') {
       if (isChallengee) return 'Your turn to accept or reject'
+      if (isChallenger) return 'Waiting for challengee to respond'
       return 'Waiting for challengee to respond'
     } else if (betState.currentStatus === 'ACCEPTED') {
       if (isChallengee) return 'Your turn to submit proof'
@@ -393,8 +413,32 @@ export default function DareClient({ id }: { id: string }) {
             </div>
           )}
 
-          {/* Status Information for non-challengees */}
-          {hasEssentialData && status === 'OPEN' && !isChallengee && (
+          {/* Cancel button for challenger */}
+          {hasEssentialData && status === 'OPEN' && isChallenger && (
+            <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4">
+              <div className="text-orange-800 text-center">
+                <div className="font-medium mb-3">You created this bet</div>
+                <div className="text-sm mb-4">
+                  Waiting for {to} to respond. You can cancel this bet if needed.
+                </div>
+                <button 
+                  onClick={cancel} 
+                  disabled={isSubmitting || !isConnected || !id}
+                  className="bg-red-500 text-white py-3 px-6 rounded-2xl font-bold text-sm hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? "Cancelling..." : "Cancel Bet"}
+                </button>
+                {betState && betState.timeRemaining > 0 && (
+                  <div className="text-xs mt-3 text-orange-600">
+                    Time remaining: {formatCountdown(betState.timeRemaining)}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Status Information for other non-challengees */}
+          {hasEssentialData && status === 'OPEN' && !isChallengee && !isChallenger && (
             <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
               <div className="text-blue-800 text-center">
                 <div className="font-medium mb-1">Bet Status: Open</div>
