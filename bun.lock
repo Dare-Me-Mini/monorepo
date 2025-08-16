@@ -34,6 +34,7 @@
         "@farcaster/auth-kit": "^0.8.1",
         "@farcaster/miniapp-sdk": "^0.1.8",
         "@farcaster/miniapp-wagmi-connector": "^1.0.0",
+        "@google/generative-ai": "^0.24.1",
         "@heroicons/react": "^2.2.0",
         "@hookform/resolvers": "^5.2.1",
         "@neynar/nodejs-sdk": "^3.34.0",
@@ -352,6 +353,8 @@
     "@floating-ui/utils": ["@floating-ui/utils@0.2.10", "", {}, "sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ=="],
 
     "@gemini-wallet/core": ["@gemini-wallet/core@0.1.1", "", { "dependencies": { "@metamask/rpc-errors": "7.0.2", "eventemitter3": "5.0.1" }, "peerDependencies": { "viem": ">=2.0.0" } }, "sha512-97Ktv+vZszADHdu6hS/B5tRfOqebwGNyD2Pfvmo1kK8d54UsNZtC22D8LJEueXqgVbq5PeSn0jv88uav3t1fHg=="],
+
+    "@google/generative-ai": ["@google/generative-ai@0.24.1", "", {}, "sha512-MqO+MLfM6kjxcKoy0p1wRzG3b4ZZXtPI+z2IE26UogS2Cm/XHO+7gGRBh6gcJsOiIVoH93UwKvW4HdgiOZCy9Q=="],
 
     "@graphql-tools/executor": ["@graphql-tools/executor@1.4.9", "", { "dependencies": { "@graphql-tools/utils": "^10.9.1", "@graphql-typed-document-node/core": "^3.2.0", "@repeaterjs/repeater": "^3.0.4", "@whatwg-node/disposablestack": "^0.0.6", "@whatwg-node/promise-helpers": "^1.0.0", "tslib": "^2.4.0" }, "peerDependencies": { "graphql": "^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0" } }, "sha512-SAUlDT70JAvXeqV87gGzvDzUGofn39nvaVcVhNf12Dt+GfWHtNNO/RCn/Ea4VJaSLGzraUd41ObnN3i80EBU7w=="],
 
