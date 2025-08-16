@@ -175,6 +175,33 @@ export default function DareClient({ id }: { id: string }) {
   
   const pendingInfo = getPendingInfo()
 
+  // Calculate the total duration for the current phase
+  const getPhaseDisplay = () => {
+    if (!hasEssentialData || !betState || !betDetails) return '—'
+    
+    if (betState.currentStatus === 'OPEN') {
+      // Show total time from bet creation to acceptance deadline
+      const createdTime = new Date(parseInt(betDetails.createdTimestamp, 10)).getTime()
+      const acceptanceTime = betDetails.acceptanceDeadline.getTime()
+      const totalDuration = acceptanceTime - createdTime
+      return formatTimeRemaining(totalDuration)
+    } else if (betState.currentStatus === 'ACCEPTED') {
+      // Show total time for proof submission phase
+      const acceptanceTime = betDetails.acceptanceDeadline.getTime()
+      const proofTime = betDetails.proofSubmissionDeadline.getTime()
+      const totalDuration = proofTime - acceptanceTime
+      return formatTimeRemaining(totalDuration)
+    } else if (betState.currentStatus === 'PROOF_SUBMITTED') {
+      // Show total time for proof review phase
+      const proofSubmissionTime = betDetails.proofSubmissionDeadline.getTime()
+      const proofAcceptanceTime = betDetails.proofAcceptanceDeadline.getTime()
+      const totalDuration = proofAcceptanceTime - proofSubmissionTime
+      return formatTimeRemaining(totalDuration)
+    }
+    
+    return formatTimeRemaining(betState.timeRemaining)
+  }
+
   const formatCountdown = (timeRemaining: number) => {
     if (timeRemaining <= 0) return "00:00:00"
     
@@ -302,7 +329,7 @@ export default function DareClient({ id }: { id: string }) {
               <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center">
                 {hasEssentialData && betState ? (
                   <span className="text-white text-lg font-bold">
-                    {formatTimeRemaining(betState.deadline)}
+                    {getPhaseDisplay()}
                   </span>
                 ) : (
                   <div className="w-8 h-4 bg-gray-600 rounded animate-pulse"></div>
