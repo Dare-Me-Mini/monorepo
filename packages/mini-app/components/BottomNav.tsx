@@ -14,9 +14,9 @@ export default function BottomNav() {
           <Link href="/create" className="p-4 bg-white rounded-full text-[#7C3AED] focus:outline-none active:opacity-80">
             <PlusIcon className="h-8 w-8" />
           </Link>
-          <button className="p-3 text-white focus:outline-none active:opacity-80">
+          <Link href="/profile" className="p-3 bg-white rounded-full text-[#7C3AED] focus:outline-none active:opacity-80">
             <UserCircleIcon className="h-6 w-6" />
-          </button>
+          </Link>
         </div>
       </div>
     </nav>
